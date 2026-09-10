@@ -12,6 +12,10 @@ class History extends Model
     protected $fillable = [
         'stock_in_id',
         'stock_out_id',
+        'action_type',
+        'status',
+        'user_id',
+        'description',
     ];
 
     /**
@@ -19,7 +23,7 @@ class History extends Model
      */
     public function stockIn(): BelongsTo
     {
-        return $this->belongsTo(StockIn::class)->withTrashed();
+        return $this->belongsTo(StockIn::class, 'stock_in_id');
     }
 
     /**
@@ -27,6 +31,14 @@ class History extends Model
      */
     public function stockOut(): BelongsTo
     {
-        return $this->belongsTo(StockOut::class)->withTrashed();
+        return $this->belongsTo(StockOut::class, 'stock_out_id');
+    }
+
+    /**
+     * Get the user who performed this action
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 }

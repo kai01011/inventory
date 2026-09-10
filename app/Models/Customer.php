@@ -18,12 +18,5 @@ class Customer extends Model
     {
         return $this->hasMany(StockOut::class, 'delivered_to_id');
     }
-
-    /**
-     * Get all cart items for this customer
-     */
-    public function cartItems(): HasMany
-    {
-        return $this->hasMany(CartItem::class);
-    }
 }
+

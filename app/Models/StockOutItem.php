@@ -16,16 +16,12 @@ class StockOutItem extends Model
         'unit_price',
     ];
 
-    protected $casts = [
-        'unit_price' => 'decimal:2',
-    ];
-
     /**
-     * Get the stock out delivery this item belongs to
+     * Get the stock out this item belongs to
      */
     public function stockOut(): BelongsTo
     {
-        return $this->belongsTo(StockOut::class);
+        return $this->belongsTo(StockOut::class, 'stock_out_id');
     }
 
     /**
@@ -33,6 +29,6 @@ class StockOutItem extends Model
      */
     public function product(): BelongsTo
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(Product::class, 'product_id');
     }
 }

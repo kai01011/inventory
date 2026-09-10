@@ -12,8 +12,20 @@ class StockIn extends Model
 
     protected $fillable = [
         'requested_by_id',
+        'approved_by_id',
         'remarks',
         'status',
+        'approved_at',
+        'rejection_reason',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     */
+    protected $casts = [
+        'approved_at' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     /**
@@ -22,6 +34,22 @@ class StockIn extends Model
     public function requestedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requested_by_id');
+    }
+
+    /**
+     * Alias for requestedBy relationship
+     */
+    public function user(): BelongsTo
+    {
+        return $this->requestedBy();
+    }
+
+    /**
+     * Get the user who approved this stock in
+     */
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by_id');
     }
 
     /**

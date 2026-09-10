@@ -14,18 +14,21 @@ class StockInItem extends Model
         'product_id',
         'stock_in_quantity',
         'unit_price',
-    ];
-
-    protected $casts = [
-        'unit_price' => 'decimal:2',
+        'category_id',
+        'supplier_id',
+        'product_name',
+        'barcode',
+        'unit',
+        'serial_no',
+        'warranty_date',
     ];
 
     /**
-     * Get the stock in request this item belongs to
+     * Get the stock in this item belongs to
      */
     public function stockIn(): BelongsTo
     {
-        return $this->belongsTo(StockIn::class);
+        return $this->belongsTo(StockIn::class, 'stock_in_id');
     }
 
     /**
@@ -33,6 +36,22 @@ class StockInItem extends Model
      */
     public function product(): BelongsTo
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(Product::class, 'product_id');
+    }
+
+    /**
+     * Get the category for this item
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class, 'category_id');
+    }
+
+    /**
+     * Get the supplier for this item
+     */
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class, 'supplier_id');
     }
 }

@@ -12,19 +12,21 @@ class Product extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'product_name',
         'category_id',
         'supplier_id',
-        'product_name',
         'price',
         'barcode',
         'unit',
         'serial_no',
         'warranty_date',
+        'quantity',
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
         'warranty_date' => 'date',
+        'quantity' => 'decimal:2',
     ];
 
     protected $dates = [
@@ -61,13 +63,5 @@ class Product extends Model
     public function stockOutItems(): HasMany
     {
         return $this->hasMany(StockOutItem::class);
-    }
-
-    /**
-     * Get all cart items for this product
-     */
-    public function cartItems(): HasMany
-    {
-        return $this->hasMany(CartItem::class);
     }
 }

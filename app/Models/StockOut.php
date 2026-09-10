@@ -16,8 +16,21 @@ class StockOut extends Model
         'delivery_no',
         'address',
         'tin',
+        'remarks',
         'status',
         'business_style',
+        'approved_by_id',
+        'approved_at',
+        'rejection_reason',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     */
+    protected $casts = [
+        'approved_at' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     /**
@@ -37,6 +50,14 @@ class StockOut extends Model
     }
 
     /**
+     * Alias for deliveredTo relationship
+     */
+    public function customer(): BelongsTo
+    {
+        return $this->deliveredTo();
+    }
+
+    /**
      * Get all items in this stock out delivery
      */
     public function items(): HasMany
@@ -50,5 +71,13 @@ class StockOut extends Model
     public function histories(): HasMany
     {
         return $this->hasMany(History::class);
+    }
+
+    /**
+     * Get the user who approved this stock out
+     */
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by_id');
     }
 }
