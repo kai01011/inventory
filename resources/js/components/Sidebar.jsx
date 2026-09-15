@@ -129,7 +129,7 @@ export default function Sidebar({ open, onToggle, pendingCounts = {} }) {
     return (
         <div className={`${open ? 'w-64' : 'w-16'} bg-gray-50 text-gray-900 overflow-hidden transition-all duration-300 border-r border-gray-200 flex flex-col h-screen fixed left-0 top-0 z-40`}>
             {/* Logo Section */}
-            <div className="p-4 border-b border-gray-200 flex items-center justify-center">
+            <div className="h-16 border-b border-gray-200 flex items-center justify-center px-4">
                 {open ? (
                     <div className="flex items-center gap-3 text-xl font-bold">
                         <img src="/images/cravelogo.png" alt="CRAVE Logo" className="h-10 w-10 flex-shrink-0" />
@@ -146,7 +146,7 @@ export default function Sidebar({ open, onToggle, pendingCounts = {} }) {
             </div>
 
             {/* Menu */}
-            <div className="flex-1 px-3 py-4">
+            <div className="flex-1 px-3 py-4 overflow-y-auto">
                 <MenuSection title="Main" items={mainMenuItems} />
                 <MenuSection title="Master Data" items={masterDataItems} />
                 <MenuSection title="Stock Management" items={stockManagementItems} />

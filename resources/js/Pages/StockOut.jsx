@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, FileText, Download, Check, X } from 'lucide-react';
+import { Plus, Trash2, FileText, Download, Check, X, ChevronDown, Search } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { formatDatePhilippines, formatDateShort, formatDateTimeSingleLine } from '@/utils/dateUtils';
 
@@ -19,6 +19,7 @@ import { useToast } from '@/components/ui/toast';
 export default function StockOut({ stockOuts, customers, products, auth }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Smart default tab - if staff user has no pending requests, show approved
   const isAdmin = auth?.user?.role?.role_name === 'Admin';
@@ -39,6 +40,10 @@ export default function StockOut({ stockOuts, customers, products, auth }) {
   const handleSearch = (term) => {
     setSearchTerm(term);
   };
+  const [productSearchOpen, setProductSearchOpen] = useState(false);
+  const [productSearchTerm, setProductSearchTerm] = useState('');
+  const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
+  const [customerSearchTerm, setCustomerSearchTerm] = useState('');
   const [detailItem, setDetailItem] = useState(null);
   const [currentItem, setCurrentItem] = useState({
     product_id: '',
@@ -89,6 +94,21 @@ export default function StockOut({ stockOuts, customers, products, auth }) {
     };
   }, [detailItem, selectedStockOutDetails, rejectDialogOpen, confirmModal.isOpen]);
 
+  // Close product dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (productSearchOpen && !e.target.closest('[data-product-dropdown]')) {
+        setProductSearchOpen(false);
+      }
+      if (customerSearchOpen && !e.target.closest('[data-customer-dropdown]')) {
+        setCustomerSearchOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [productSearchOpen, customerSearchOpen]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (items.length === 0) {
@@ -105,6 +125,13 @@ export default function StockOut({ stockOuts, customers, products, auth }) {
       toast.warning('Please enter an address');
       return;
     }
+
+    // Prevent duplicate submissions
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
 
     // Create JSON payload
     const payload = {
@@ -180,6 +207,7 @@ export default function StockOut({ stockOuts, customers, products, auth }) {
         console.error('Error:', error);
         // Show error but do NOT close dialog or reload
         toast.error('Failed to create stock out: ' + (error.message || 'Unknown error'));
+        setIsSubmitting(false);
       });
   };
 
@@ -369,264 +397,413 @@ export default function StockOut({ stockOuts, customers, products, auth }) {
       
       <div className="p-8 bg-white min-h-screen">
         <div className="max-w-6xl mx-auto">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Stock Out</h1>
-              <p className="text-gray-600 text-sm mt-1">
-                {isAdmin ? 'Manage outgoing stock deliveries' : 'View stock delivery history'}
-              </p>
-            </div>
+          {/* Toolbar */}
+          <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
-                <Button className="gap-2 bg-red-600 hover:bg-red-700 h-9 text-sm">
+                <Button className="gap-2 bg-red-600 hover:bg-red-700 h-10 text-white font-medium text-sm">
                   <Plus size={18} />
-                  Add Stock Out
+                  Add Stock Out Request
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                  <DialogTitle>Add Stock Out Request</DialogTitle>
-                  <DialogDescription>
-                    Create a new outgoing stock delivery.
-                  </DialogDescription>
+              <DialogContent className="sm:max-w-[640px] max-h-[90vh] flex flex-col">
+                <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-200">
+                  <DialogTitle className="text-xl font-semibold">Add Stock Out Request</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto">
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                    <p className="text-sm font-medium text-gray-900">Requested By (You):</p>
-                    <p className="text-sm text-gray-700 mt-1">{auth?.user?.name}</p>
-                    <p className="text-xs text-gray-600 mt-1">Email: {auth?.user?.email}</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 mb-1">
-                      Delivered To (Customer)
-                    </label>
-                    <select
-                      id="delivered_to_id"
-                      name="delivered_to_id"
-                      value={data.delivered_to_id}
-                      onChange={(e) => setData('delivered_to_id', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
-                    >
-                      <option value="">Select Customer</option>
-                      {customers && customers.map((cust) => (
-                        <option key={cust.id} value={cust.id}>{cust.customer_name}</option>
-                      ))}
-                    </select>
-                    {errors.delivered_to_id && <p className="text-red-600 text-sm mt-1">{errors.delivered_to_id}</p>}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 mb-1">
-                      Address
-                    </label>
-                    <textarea
-                      id="address"
-                      name="address"
-                      value={data.address}
-                      onChange={(e) => setData('address', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition resize-none"
-                      placeholder="Enter delivery address"
-                      rows="2"
-                    />
-                    {errors.address && <p className="text-red-600 text-sm mt-1">{errors.address}</p>}
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-900 mb-1">
-                        TIN
-                      </label>
-                      <input
-                        id="tin"
-                        type="text"
-                        name="tin"
-                        value={data.tin}
-                        onChange={(e) => setData('tin', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
-                        placeholder="Enter TIN"
-                      />
-                      {errors.tin && <p className="text-red-600 text-sm mt-1">{errors.tin}</p>}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-900 mb-1">
-                        Business Style
-                      </label>
-                      <input
-                        id="business_style"
-                        type="text"
-                        name="business_style"
-                        value={data.business_style}
-                        onChange={(e) => setData('business_style', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
-                        placeholder="Enter business style"
-                      />
-                      {errors.business_style && <p className="text-red-600 text-sm mt-1">{errors.business_style}</p>}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-900 mb-1">
-                      Remarks
-                    </label>
-                    <textarea
-                      id="remarks_stockout"
-                      name="remarks"
-                      value={data.remarks}
-                      onChange={(e) => setData('remarks', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition resize-none"
-                      placeholder="Additional remarks or notes"
-                      rows="2"
-                    />
-                    {errors.remarks && <p className="text-red-600 text-sm mt-1">{errors.remarks}</p>}
-                  </div>
-
-                  {/* Products Section */}
-                  <div className="border-t pt-4">
-                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Products to Ship</h3>
+                <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 flex flex-col">
+                  <div className="space-y-5 flex-1">
                     
-                    <div className="space-y-3 mb-3">
+                    {/* Requester Info - Neutral Row */}
+                    <div className="flex items-center justify-between py-3 border-b border-gray-200">
                       <div>
-                        <label className="block text-sm font-medium text-gray-900 mb-1">
-                          Product
-                        </label>
-                        <select
-                          id="product_id"
-                          name="product_id"
-                          value={currentItem.product_id}
-                          onChange={(e) => {
-                            const product = products?.find(p => p.id == e.target.value);
-                            setCurrentItem({
-                              ...currentItem,
-                              product_id: e.target.value,
-                              unit_price: product?.price || '',
-                            });
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
-                        >
-                          <option value="">Select Product</option>
-                          {products && products.map((prod) => (
-                            <option key={prod.id} value={prod.id}>
-                              {prod.product_name} (Qty: {prod.quantity})
-                            </option>
-                          ))}
-                        </select>
+                        <span className="text-xs text-gray-600">Requested by</span>
+                        <p className="text-sm font-semibold text-gray-900">{auth?.user?.name}</p>
+                        <p className="text-xs text-gray-600 mt-0.5">{auth?.user?.email}</p>
                       </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-900 mb-1">
-                            Quantity
-                          </label>
-                          <input
-                            id="stock_out_quantity"
-                            type="number"
-                            name="stock_out_quantity"
-                            value={currentItem.stock_out_quantity}
-                            onChange={(e) => setCurrentItem({
-                              ...currentItem,
-                              stock_out_quantity: e.target.value,
-                            })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
-                            placeholder="e.g., 5"
-                            min="1"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-900 mb-1">
-                            Unit Price (₱)
-                          </label>
-                          <input
-                            id="unit_price"
-                            type="number"
-                            name="unit_price"
-                            value={currentItem.unit_price}
-                            onChange={(e) => setCurrentItem({
-                              ...currentItem,
-                              unit_price: e.target.value,
-                            })}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
-                            placeholder="e.g., 5000.00"
-                            min="0"
-                            step="0.01"
-                          />
-                        </div>
-                      </div>
-
-                      <Button
-                        type="button"
-                        onClick={addItem}
-                        className="w-full bg-blue-600 hover:bg-blue-700"
-                      >
-                        Add Product
-                      </Button>
                     </div>
 
-                    {/* Items List */}
-                    {items.length > 0 && (
-                      <div className="mb-3">
-                        <label className="block text-sm font-medium text-gray-900 mb-2">
-                          Products to Ship ({items.length})
-                        </label>
-                        <div className="border border-gray-200 rounded-lg overflow-hidden">
-                          <table className="w-full text-xs border-collapse">
-                            <thead className="bg-gray-50 border-b border-gray-200">
-                              <tr>
-                                <th className="px-3 py-1.5 text-left font-semibold text-gray-500">Product Name</th>
-                                <th className="px-3 py-1.5 text-center font-semibold text-gray-500 w-14">Qty</th>
-                                <th className="px-3 py-1.5 text-center font-semibold text-gray-500 w-24">Price</th>
-                                <th className="px-3 py-1.5 text-center font-semibold text-gray-500 w-16">Action</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {items.map((item, idx) => {
-                                const product = products?.find(p => p.id == item.product_id);
-                                return (
-                                  <tr key={idx} className="border-b border-gray-100 last:border-b-0 bg-white hover:bg-gray-50 transition-colors">
-                                    <td className="px-3 py-2 font-medium text-gray-900 text-sm">{product?.product_name || '-'}</td>
-                                    <td className="px-3 py-2 text-center font-semibold text-gray-800">{item.stock_out_quantity}</td>
-                                    <td className="px-3 py-2 text-center font-semibold text-gray-800">₱{parseFloat(item.unit_price || 0).toFixed(2)}</td>
-                                    <td className="px-3 py-2 text-center">
-                                      <button
-                                        type="button"
-                                        onClick={() => removeItem(idx)}
-                                        className="text-red-500 hover:text-red-700 transition"
-                                      >
-                                        <Trash2 size={14} />
-                                      </button>
-                                    </td>
-                                  </tr>
-                                );
-                              })}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
+                    {/* Delivered To - Customer Selection */}
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1.5 font-medium">
+                        Delivered To (Customer)
+                      </label>
+                      
+                      {/* Custom Customer Dropdown */}
+                      <div className="relative" data-customer-dropdown>
+                        {/* Trigger Button */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCustomerSearchOpen(!customerSearchOpen);
+                            if (!customerSearchOpen) setCustomerSearchTerm('');
+                          }}
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition text-left flex items-center justify-between bg-white hover:bg-gray-50"
+                        >
+                          <span className={data.delivered_to_id ? 'text-gray-900' : 'text-gray-500'}>
+                            {data.delivered_to_id 
+                              ? customers?.find(c => c.id == data.delivered_to_id)?.customer_name || 'Select Customer'
+                              : 'Select Customer'}
+                          </span>
+                          <ChevronDown size={16} className={`transition-transform ${customerSearchOpen ? 'rotate-180' : ''}`} />
+                        </button>
 
-                    {/* Item Detail Modal */}
-                    {detailItem && (
-                      <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-white/30">
-                        <div className="bg-white rounded-xl shadow-2xl p-5 w-full max-w-sm mx-4">
-                          <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-bold text-gray-900">{products?.find(p => p.id == detailItem.product_id)?.product_name || 'Product'}</h3>
-                            <button onClick={() => setDetailItem(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+                        {/* Dropdown Menu */}
+                        {customerSearchOpen && (
+                          <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-72 flex flex-col">
+                            
+                            {/* Search Input */}
+                            <div className="p-2 border-b border-gray-200 flex-shrink-0">
+                              <div className="relative">
+                                <input
+                                  type="text"
+                                  placeholder="Search customers..."
+                                  value={customerSearchTerm}
+                                  onChange={(e) => setCustomerSearchTerm(e.target.value)}
+                                  autoFocus
+                                  className="w-full px-3 py-2 pl-8 border border-gray-300 rounded text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition"
+                                />
+                                <Search size={14} className="absolute left-2.5 top-2.5 text-gray-400" />
+                              </div>
+                            </div>
+
+                            {/* Options List */}
+                            <div className="overflow-y-auto flex-1">
+                              {(() => {
+                                const filtered = customers?.filter(c =>
+                                  c.customer_name.toLowerCase().includes(customerSearchTerm.toLowerCase())
+                                ) || [];
+
+                                if (filtered.length === 0) {
+                                  return (
+                                    <div className="px-3 py-3 text-xs text-gray-500 text-center">
+                                      No customers found
+                                    </div>
+                                  );
+                                }
+
+                                return filtered.map((cust) => {
+                                  const isSelected = data.delivered_to_id == cust.id;
+                                  return (
+                                    <button
+                                      key={cust.id}
+                                      type="button"
+                                      onClick={() => {
+                                        setData('delivered_to_id', cust.id);
+                                        setCustomerSearchOpen(false);
+                                        setCustomerSearchTerm('');
+                                      }}
+                                      className={`w-full px-3 py-2.5 text-xs text-left flex items-center justify-between border-b border-gray-100 last:border-b-0 transition ${
+                                        isSelected
+                                          ? 'bg-blue-50 text-blue-900'
+                                          : 'bg-white text-gray-900 hover:bg-gray-50'
+                                      }`}
+                                    >
+                                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                                        {isSelected && <Check size={14} className="flex-shrink-0 text-blue-600" />}
+                                        <span className="truncate font-medium">{cust.customer_name}</span>
+                                      </div>
+                                    </button>
+                                  );
+                                });
+                              })()}
+                            </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-3 text-xs">
-                            <div><p className="text-gray-500">Qty</p><p className="font-semibold text-gray-900">{detailItem.stock_out_quantity}</p></div>
-                            <div><p className="text-gray-500">Unit Price</p><p className="font-semibold text-gray-900">₱{parseFloat(detailItem.unit_price || 0).toFixed(2)}</p></div>
-                          </div>
-                          <button onClick={() => setDetailItem(null)} className="mt-4 w-full py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition">Close</button>
-                        </div>
+                        )}
                       </div>
-                    )}
+                      
+                      {errors.delivered_to_id && <p className="text-red-600 text-xs mt-1">{errors.delivered_to_id}</p>}
+                    </div>
+
+                    {/* Address - Full Width */}
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1.5 font-medium">
+                        Delivery Address
+                      </label>
+                      <textarea
+                        id="address"
+                        name="address"
+                        value={data.address}
+                        onChange={(e) => setData('address', e.target.value)}
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition resize-none"
+                        placeholder="Enter delivery address"
+                        rows="2"
+                      />
+                      {errors.address && <p className="text-red-600 text-xs mt-1">{errors.address}</p>}
+                    </div>
+
+                    {/* TIN | Business Style - Two Columns */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1.5 font-medium">
+                          TIN
+                        </label>
+                        <input
+                          id="tin"
+                          type="text"
+                          name="tin"
+                          value={data.tin}
+                          onChange={(e) => setData('tin', e.target.value)}
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                          placeholder="Enter TIN"
+                        />
+                        {errors.tin && <p className="text-red-600 text-xs mt-1">{errors.tin}</p>}
+                      </div>
+
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1.5 font-medium">
+                          Business Style
+                        </label>
+                        <input
+                          id="business_style"
+                          type="text"
+                          name="business_style"
+                          value={data.business_style}
+                          onChange={(e) => setData('business_style', e.target.value)}
+                          className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                          placeholder="Enter business style"
+                        />
+                        {errors.business_style && <p className="text-red-600 text-xs mt-1">{errors.business_style}</p>}
+                      </div>
+                    </div>
+
+                    {/* Remarks - Full Width */}
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1.5 font-medium">
+                        Remarks
+                      </label>
+                      <textarea
+                        id="remarks_stockout"
+                        name="remarks"
+                        value={data.remarks}
+                        onChange={(e) => setData('remarks', e.target.value)}
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition resize-none"
+                        placeholder="Additional remarks or notes"
+                        rows="2"
+                      />
+                      {errors.remarks && <p className="text-red-600 text-xs mt-1">{errors.remarks}</p>}
+                    </div>
+
+                    {/* Products Section - Separated with divider */}
+                    <div className="pt-4 border-t border-gray-200">
+                      <h3 className="text-xs text-gray-600 mb-4 font-medium">Products to Ship</h3>
+                      
+                      {/* Product Selection Fields */}
+                      <div className="space-y-4 mb-4">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1.5 font-medium">
+                            Product
+                          </label>
+                          
+                          {/* Custom Product Dropdown */}
+                          <div className="relative" data-product-dropdown>
+                            {/* Trigger Button */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setProductSearchOpen(!productSearchOpen);
+                                if (!productSearchOpen) setProductSearchTerm('');
+                              }}
+                              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition text-left flex items-center justify-between bg-white hover:bg-gray-50"
+                            >
+                              <span className={currentItem.product_id ? 'text-gray-900' : 'text-gray-500'}>
+                                {currentItem.product_id 
+                                  ? products?.find(p => p.id == currentItem.product_id)?.product_name || 'Select Product'
+                                  : 'Select Product'}
+                              </span>
+                              <ChevronDown size={16} className={`transition-transform ${productSearchOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {/* Dropdown Menu */}
+                            {productSearchOpen && (
+                              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-72 flex flex-col">
+                                
+                                {/* Search Input */}
+                                <div className="p-2 border-b border-gray-200 flex-shrink-0">
+                                  <div className="relative">
+                                    <input
+                                      type="text"
+                                      placeholder="Search products..."
+                                      value={productSearchTerm}
+                                      onChange={(e) => setProductSearchTerm(e.target.value)}
+                                      autoFocus
+                                      className="w-full px-3 py-2 pl-8 border border-gray-300 rounded text-xs text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 transition"
+                                    />
+                                    <Search size={14} className="absolute left-2.5 top-2.5 text-gray-400" />
+                                  </div>
+                                </div>
+
+                                {/* Options List */}
+                                <div className="overflow-y-auto flex-1">
+                                  {(() => {
+                                    const filtered = products?.filter(p =>
+                                      p.product_name.toLowerCase().includes(productSearchTerm.toLowerCase())
+                                    ) || [];
+
+                                    if (filtered.length === 0) {
+                                      return (
+                                        <div className="px-3 py-3 text-xs text-gray-500 text-center">
+                                          No products found
+                                        </div>
+                                      );
+                                    }
+
+                                    return filtered.map((prod) => {
+                                      const isSelected = currentItem.product_id == prod.id;
+                                      const displayQty = prod.quantity % 1 === 0 ? Math.floor(prod.quantity) : parseFloat(prod.quantity).toFixed(2);
+                                      return (
+                                        <button
+                                          key={prod.id}
+                                          type="button"
+                                          onClick={() => {
+                                            setCurrentItem({
+                                              ...currentItem,
+                                              product_id: prod.id,
+                                              unit_price: prod.price || '',
+                                            });
+                                            setProductSearchOpen(false);
+                                            setProductSearchTerm('');
+                                          }}
+                                          className={`w-full px-3 py-2.5 text-xs text-left flex items-center justify-between border-b border-gray-100 last:border-b-0 transition ${
+                                            isSelected
+                                              ? 'bg-blue-50 text-blue-900'
+                                              : 'bg-white text-gray-900 hover:bg-gray-50'
+                                          }`}
+                                        >
+                                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                                            {isSelected && <Check size={14} className="flex-shrink-0 text-blue-600" />}
+                                            <span className="truncate font-medium">{prod.product_name}</span>
+                                          </div>
+                                          <span className="text-gray-500 flex-shrink-0 ml-2">Available: {displayQty}</span>
+                                        </button>
+                                      );
+                                    });
+                                  })()}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Quantity | Unit Price - Two Columns */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1.5 font-medium">
+                              Quantity
+                            </label>
+                            <input
+                              id="stock_out_quantity"
+                              type="number"
+                              name="stock_out_quantity"
+                              value={currentItem.stock_out_quantity}
+                              onChange={(e) => setCurrentItem({
+                                ...currentItem,
+                                stock_out_quantity: e.target.value,
+                              })}
+                              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                              placeholder="e.g., 5"
+                              min="1"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1.5 font-medium">
+                              Unit Price (₱)
+                            </label>
+                            <input
+                              id="unit_price"
+                              type="number"
+                              name="unit_price"
+                              value={currentItem.unit_price}
+                              onChange={(e) => setCurrentItem({
+                                ...currentItem,
+                                unit_price: e.target.value,
+                              })}
+                              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                              placeholder="e.g., 5000.00"
+                              min="0"
+                              step="0.01"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Add Product Button - Outline Style */}
+                        <Button
+                          type="button"
+                          onClick={addItem}
+                          variant="outline"
+                          className="w-full gap-2 border border-gray-300 text-gray-700 hover:bg-gray-50 h-10"
+                        >
+                          <Plus size={16} />
+                          Add Product
+                        </Button>
+                      </div>
+
+                      {/* Items List */}
+                      {items.length > 0 && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-900 mb-3">
+                            Products to Ship ({items.length})
+                          </label>
+                          <div className="border border-gray-200 rounded-lg overflow-hidden">
+                            <table className="w-full text-xs">
+                              <thead className="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                  <th className="px-3 py-2 text-left font-semibold text-gray-600">Product Name</th>
+                                  <th className="px-3 py-2 text-center font-semibold text-gray-600 w-14">Qty</th>
+                                  <th className="px-3 py-2 text-center font-semibold text-gray-600 w-24">Price</th>
+                                  <th className="px-3 py-2 text-center font-semibold text-gray-600 w-20">Action</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {items.map((item, idx) => {
+                                  const product = products?.find(p => p.id == item.product_id);
+                                  return (
+                                    <tr key={idx} className="border-b border-gray-100 last:border-b-0 bg-white hover:bg-gray-50 transition-colors">
+                                      <td className="px-3 py-2 font-medium text-gray-900">{product?.product_name || '-'}</td>
+                                      <td className="px-3 py-2 text-center font-semibold text-gray-800">{item.stock_out_quantity}</td>
+                                      <td className="px-3 py-2 text-center font-semibold text-gray-800">₱{parseFloat(item.unit_price || 0).toFixed(2)}</td>
+                                      <td className="px-3 py-2 text-center">
+                                        <button
+                                          type="button"
+                                          onClick={() => removeItem(idx)}
+                                          className="text-red-500 hover:text-red-700 transition p-1"
+                                        >
+                                          <Trash2 size={14} />
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Item Detail Modal */}
+                      {detailItem && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
+                          <div className="bg-white rounded-lg shadow-lg p-5 w-full max-w-sm mx-4">
+                            <div className="flex items-center justify-between mb-4">
+                              <h3 className="text-sm font-bold text-gray-900">{products?.find(p => p.id == detailItem.product_id)?.product_name || 'Product'}</h3>
+                              <button onClick={() => setDetailItem(null)} className="text-gray-400 hover:text-gray-600">
+                                <X size={20} />
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 text-xs mb-4">
+                              <div><p className="text-gray-500">Qty</p><p className="font-semibold text-gray-900">{detailItem.stock_out_quantity}</p></div>
+                              <div><p className="text-gray-500">Unit Price</p><p className="font-semibold text-gray-900">₱{parseFloat(detailItem.unit_price || 0).toFixed(2)}</p></div>
+                            </div>
+                            <button onClick={() => setDetailItem(null)} className="w-full py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition">Close</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex justify-end gap-3 pt-4">
+                  {/* Footer - Right Aligned Buttons */}
+                  <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 mt-auto">
                     <Button
                       type="button"
                       onClick={() => setOpen(false)}
@@ -637,10 +814,10 @@ export default function StockOut({ stockOuts, customers, products, auth }) {
                     </Button>
                     <Button
                       type="submit"
-                      disabled={processing}
+                      disabled={isSubmitting || items.length === 0}
                       className="bg-red-600 hover:bg-red-700"
                     >
-                      {processing ? 'Adding...' : 'Add Stock Out'}
+                      {isSubmitting ? 'Submitting...' : 'Add Stock Out Request'}
                     </Button>
                   </div>
                 </form>
@@ -651,37 +828,46 @@ export default function StockOut({ stockOuts, customers, products, auth }) {
 
           {/* Tabs for admin */}
           {isAdmin && (
-            <div className="mb-6 border-b border-gray-200">
-              <div className="flex gap-4">
+            <div className="mb-5 border-b border-gray-200">
+              <div className="flex gap-8">
                 <button
                   onClick={() => setActiveTab('pending')}
-                  className={`px-4 py-2 font-medium transition-colors ${
+                  className={`pb-3 text-sm transition-colors border-b-2 ${
                     activeTab === 'pending'
-                      ? 'border-b-2 border-red-600 text-red-600'
-                      : 'text-gray-600 hover:text-gray-900'
+                      ? 'border-red-600 text-gray-900 font-medium'
+                      : 'border-transparent text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  Pending Requests ({pendingRequests.length})
+                  Pending Requests
+                  <span className={`ml-2 text-xs font-normal ${activeTab === 'pending' ? 'text-gray-600' : 'text-gray-500'}`}>
+                    ({pendingRequests.length})
+                  </span>
                 </button>
                 <button
                   onClick={() => setActiveTab('approved')}
-                  className={`px-4 py-2 font-medium transition-colors ${
+                  className={`pb-3 text-sm transition-colors border-b-2 ${
                     activeTab === 'approved'
-                      ? 'border-b-2 border-red-600 text-red-600'
-                      : 'text-gray-600 hover:text-gray-900'
+                      ? 'border-red-600 text-gray-900 font-medium'
+                      : 'border-transparent text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  Approved ({approvedRequests.length})
+                  Approved
+                  <span className={`ml-2 text-xs font-normal ${activeTab === 'approved' ? 'text-gray-600' : 'text-gray-500'}`}>
+                    ({approvedRequests.length})
+                  </span>
                 </button>
                 <button
                   onClick={() => setActiveTab('rejected')}
-                  className={`px-4 py-2 font-medium transition-colors ${
+                  className={`pb-3 text-sm transition-colors border-b-2 ${
                     activeTab === 'rejected'
-                      ? 'border-b-2 border-red-600 text-red-600'
-                      : 'text-gray-600 hover:text-gray-900'
+                      ? 'border-red-600 text-gray-900 font-medium'
+                      : 'border-transparent text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  Rejected ({rejectedRequests.length})
+                  Rejected
+                  <span className={`ml-2 text-xs font-normal ${activeTab === 'rejected' ? 'text-gray-600' : 'text-gray-500'}`}>
+                    ({rejectedRequests.length})
+                  </span>
                 </button>
               </div>
             </div>
@@ -689,72 +875,66 @@ export default function StockOut({ stockOuts, customers, products, auth }) {
 
           {/* Table */}
           <div className="border border-gray-200 rounded-lg overflow-hidden">
-            <table className="w-full table-fixed">
+            <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="w-12 px-2 py-3 text-left text-xs font-semibold text-gray-900">ID</th>
-                  <th className="w-20 px-2 py-3 text-left text-xs font-semibold text-gray-900">Delivery No</th>
-                  <th className="w-32 px-2 py-3 text-left text-xs font-semibold text-gray-900">Customer</th>
-                  <th className="w-40 px-2 py-3 text-left text-xs font-semibold text-gray-900">Address</th>
-                  <th className="w-24 px-2 py-3 text-left text-xs font-semibold text-gray-900">Requested By</th>
-                  <th className="w-20 px-2 py-3 text-left text-xs font-semibold text-gray-900">Status</th>
-                  <th className="w-32 px-2 py-3 text-left text-xs font-semibold text-gray-900">Created At</th>
-                  <th className="w-32 px-2 py-3 text-center text-xs font-semibold text-gray-900">Action</th>
+                  <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider min-w-[70px]">Request ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider min-w-[100px]">Delivery No.</th>
+                  <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider min-w-[130px]">Customer</th>
+                  <th className="hidden lg:table-cell px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider min-w-[150px]">Address</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider min-w-[120px]">Requested By</th>
+                  <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider min-w-[130px]">Requested At</th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider min-w-[130px]">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-100">
                 {displayedRequests && displayedRequests.length > 0 ? (
                   displayedRequests.map((item, idx) => (
                     <React.Fragment key={idx}>
                       <tr className="hover:bg-gray-50 transition-colors">
-                        <td className="px-2 py-2 text-xs font-medium text-gray-900">{item.id}</td>
-                        <td className="px-2 py-2 text-xs text-gray-700">{item.delivery_no}</td>
-                        <td className="px-2 py-2 text-xs text-gray-700">
-                          <div className="truncate" title={item.customer?.customer_name}>{item.customer?.customer_name || '-'}</div>
+                        <td className="hidden sm:table-cell px-4 py-4 text-sm font-medium text-gray-900">{item.id}</td>
+                        <td className="px-4 py-4 text-sm font-medium text-gray-900">{item.delivery_no}</td>
+                        <td className="hidden md:table-cell px-4 py-4 text-sm text-gray-700">
+                          <div className="text-gray-900" title={item.customer?.customer_name}>{item.customer?.customer_name || '-'}</div>
                         </td>
-                        <td className="px-2 py-2 text-xs text-gray-700">
-                          <div className="truncate" title={item.address}>{item.address || '-'}</div>
+                        <td className="hidden lg:table-cell px-4 py-4 text-sm text-gray-700">
+                          <div className="break-words" title={item.address}>{item.address || '-'}</div>
                         </td>
-                        <td className="px-2 py-2 text-xs">
-                          <span className="text-blue-600 font-medium truncate block" title={item.requestedBy?.name || item.user?.name || 'Unknown'}>
+                        <td className="px-4 py-4 text-sm text-gray-700">
+                          <span className="text-gray-900 block truncate" title={item.requestedBy?.name || item.user?.name || 'Unknown'}>
                             {item.requestedBy?.name || item.user?.name || 'Unknown'}
                           </span>
                         </td>
-                        <td className="px-2 py-2 text-xs">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(item.status)}`}>
-                            {item.status}
-                          </span>
+                        <td className="hidden md:table-cell px-4 py-4 text-sm text-gray-700 whitespace-nowrap">
+                          <div className="font-medium">{formatDateTimeSingleLine(item.created_at)}</div>
                         </td>
-                        <td className="px-2 py-2 text-xs text-gray-700 whitespace-nowrap">
-                          {formatDateTimeSingleLine(item.created_at)}
-                        </td>
-                        <td className="px-2 py-2 text-xs text-center">
-                          <div className="flex items-center justify-center gap-1">
+                        <td className="px-4 py-4 text-sm text-center">
+                          <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={() => setSelectedStockOutDetails(item)}
-                              className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 px-1 py-1 bg-blue-50 rounded hover:bg-blue-100 transition"
+                              className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800 px-2.5 py-2 hover:bg-blue-50 rounded transition"
                               title="View Details"
                             >
-                              <span className="hidden sm:inline">Details</span>
+                              <span>Details</span>
                             </button>
                             {isAdmin && item.status === 'pending' && (
                               <>
                                 <button
                                   onClick={() => handleApprove(item.id)}
-                                  className="inline-flex items-center justify-center text-green-600 hover:text-green-800 transition-colors p-1 rounded hover:bg-green-50"
+                                  className="inline-flex items-center justify-center text-green-600 hover:text-green-800 transition-colors p-2 rounded hover:bg-green-50"
                                   title="Approve stock out"
                                 >
-                                  <Check size={12} />
+                                  <Check size={16} />
                                 </button>
                                 <button
                                   onClick={() => {
                                     setRejectingId(item.id);
                                     setRejectDialogOpen(true);
                                   }}
-                                  className="inline-flex items-center justify-center text-red-600 hover:text-red-800 transition-colors p-1 rounded hover:bg-red-50"
+                                  className="inline-flex items-center justify-center text-red-600 hover:text-red-800 transition-colors p-2 rounded hover:bg-red-50"
                                   title="Reject stock out"
                                 >
-                                  <X size={12} />
+                                  <X size={16} />
                                 </button>
                               </>
                             )}
@@ -763,18 +943,18 @@ export default function StockOut({ stockOuts, customers, products, auth }) {
                               <>
                                 <button
                                   onClick={() => window.open(`/delivery-receipt/${item.id}/view`, '_blank')}
-                                  className="inline-flex items-center gap-1 text-xs font-semibold text-green-600 hover:text-green-800 px-1 py-1 bg-green-50 rounded hover:bg-green-100 transition"
+                                  className="inline-flex items-center gap-1.5 text-sm font-medium text-green-600 hover:text-green-800 px-2.5 py-2 hover:bg-green-50 rounded transition"
                                   title="View delivery receipt"
                                 >
-                                  <FileText size={12} />
+                                  <FileText size={16} />
                                   <span className="hidden sm:inline">Receipt</span>
                                 </button>
                                 <button
                                   onClick={() => window.open(`/delivery-receipt/${item.id}/download`, '_blank')}
-                                  className="inline-flex items-center justify-center text-gray-600 hover:text-gray-800 transition-colors p-1 rounded hover:bg-gray-50"
-                                  title="Download delivery receipt"
+                                  className="inline-flex items-center justify-center text-gray-600 hover:text-gray-800 transition-colors p-2 rounded hover:bg-gray-50"
+                                  title="Download delivery receipt PDF"
                                 >
-                                  <Download size={12} />
+                                  <Download size={16} />
                                 </button>
                               </>
                             )}
@@ -785,11 +965,20 @@ export default function StockOut({ stockOuts, customers, products, auth }) {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="8" className="px-6 py-8 text-center text-sm text-gray-600">
-                      {isAdmin 
-                        ? `No ${activeTab} records found` 
-                        : `You haven't created any ${activeTab} stock out requests yet. Click "Add Stock Out" to create your first request.`
-                      }
+                    <td colSpan="7" className="px-4 py-12 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                        <p className="text-sm font-semibold text-gray-900">
+                          {isAdmin 
+                            ? `No ${activeTab} records found` 
+                            : `You haven't created any ${activeTab} stock out requests yet`
+                          }
+                        </p>
+                      </div>
                     </td>
                   </tr>
                 )}
@@ -850,190 +1039,147 @@ export default function StockOut({ stockOuts, customers, products, auth }) {
 
       {/* Stock Out Details Modal - Redesigned Enterprise UI */}
       {selectedStockOutDetails && (
-        <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-[720px] max-h-[90vh] flex flex-col">
             {/* FIXED HEADER */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 flex-shrink-0">
               <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between">
-                  <div className="min-w-0">
-                    <h2 className="text-lg font-semibold text-gray-900 truncate">
-                      Stock Out Request
-                    </h2>
-                    <p className="text-sm text-gray-600 mt-0.5">
-                      #{selectedStockOutDetails.delivery_no || selectedStockOutDetails.id.toString().padStart(5, '0')} · Created {formatDateShort(selectedStockOutDetails.created_at)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3 ml-4">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${
-                        selectedStockOutDetails.status === 'approved' ? 'bg-green-500' :
-                        selectedStockOutDetails.status === 'pending' ? 'bg-yellow-500' :
-                        selectedStockOutDetails.status === 'rejected' ? 'bg-red-500' :
-                        'bg-gray-400'
-                      }`} />
-                      <span className={`text-sm font-medium capitalize ${
-                        selectedStockOutDetails.status === 'approved' ? 'text-green-700' :
-                        selectedStockOutDetails.status === 'pending' ? 'text-yellow-700' :
-                        selectedStockOutDetails.status === 'rejected' ? 'text-red-700' :
-                        'text-gray-700'
-                      }`}>
-                        {selectedStockOutDetails.status}
-                      </span>
-                    </div>
-                  </div>
+                <h2 className="text-lg font-semibold text-gray-900">Stock Out Request</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Request #{selectedStockOutDetails.id.toString().padStart(5, '0')}
+                </p>
+              </div>
+              <div className="flex items-center gap-3 ml-6">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    selectedStockOutDetails.status === 'approved' ? 'bg-green-500' :
+                    selectedStockOutDetails.status === 'pending' ? 'bg-yellow-500' :
+                    selectedStockOutDetails.status === 'rejected' ? 'bg-red-500' :
+                    'bg-gray-400'
+                  }`} />
+                  <span className={`text-xs font-semibold capitalize px-2 py-1 rounded ${
+                    selectedStockOutDetails.status === 'approved' ? 'bg-green-100 text-green-700' :
+                    selectedStockOutDetails.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                    selectedStockOutDetails.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {selectedStockOutDetails.status}
+                  </span>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedStockOutDetails(null)}
-                className="flex-shrink-0 ml-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="flex-shrink-0 ml-4 text-gray-400 hover:text-gray-600 transition"
                 aria-label="Close modal"
               >
-                <X size={18} />
+                <X size={24} />
               </button>
             </div>
 
             {/* SCROLLABLE BODY */}
-            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
               
-              {/* REQUEST INFORMATION */}
-              <div>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4 pb-2 border-b border-gray-100">
-                  Request Information
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+              {/* REQUEST INFORMATION - Simplified */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <span className="text-xs text-gray-600">Customer</span>
+                  <p className="text-sm font-medium text-gray-900 break-words">
+                    {selectedStockOutDetails.customer?.customer_name || 'Not specified'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-xs text-gray-600">Created At</span>
+                  <p className="text-sm font-medium text-gray-900">
+                    {formatDatePhilippines(selectedStockOutDetails.created_at)}
+                  </p>
+                </div>
+                {selectedStockOutDetails.remarks && (
+                  <div className="sm:col-span-2">
+                    <span className="text-xs text-gray-600">Remarks</span>
+                    <p className="text-sm text-gray-900 break-words">
+                      {selectedStockOutDetails.remarks}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* DELIVERY INFORMATION */}
+              <div className="pt-4 border-t border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-900 mb-4">Delivery Information</h3>
+                <div className="space-y-4">
                   <div>
-                    <dt className="text-sm text-gray-600 mb-1">Customer</dt>
-                    <dd className="text-base font-medium text-gray-900">
-                      {selectedStockOutDetails.customer?.customer_name || 'Not specified'}
-                    </dd>
+                    <span className="text-xs text-gray-600">Delivery Address</span>
+                    <p className="text-sm text-gray-900 break-words leading-relaxed mt-1">
+                      {selectedStockOutDetails.address || 'No address specified'}
+                    </p>
                   </div>
-                  <div>
-                    <dt className="text-sm text-gray-600 mb-1">Status</dt>
-                    <dd>
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${
-                          selectedStockOutDetails.status === 'approved' ? 'bg-green-500' :
-                          selectedStockOutDetails.status === 'pending' ? 'bg-yellow-500' :
-                          selectedStockOutDetails.status === 'rejected' ? 'bg-red-500' :
-                          'bg-gray-400'
-                        }`} />
-                        <span className={`text-base font-medium capitalize ${
-                          selectedStockOutDetails.status === 'approved' ? 'text-green-700' :
-                          selectedStockOutDetails.status === 'pending' ? 'text-yellow-700' :
-                          selectedStockOutDetails.status === 'rejected' ? 'text-red-700' :
-                          'text-gray-700'
-                        }`}>
-                          {selectedStockOutDetails.status}
-                        </span>
-                      </div>
-                    </dd>
-                  </div>
-                  <div className="md:col-span-2">
-                    <dt className="text-sm text-gray-600 mb-1">Created At</dt>
-                    <dd className="text-base font-medium text-gray-900">
-                      {formatDatePhilippines(selectedStockOutDetails.created_at)}
-                    </dd>
-                  </div>
-                  {selectedStockOutDetails.remarks && (
-                    <div className="md:col-span-2">
-                      <dt className="text-sm text-gray-600 mb-1">Remarks</dt>
-                      <dd className="text-base text-gray-900">
-                        {selectedStockOutDetails.remarks}
-                      </dd>
+                  
+                  {(selectedStockOutDetails.tin || selectedStockOutDetails.business_style) && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      {selectedStockOutDetails.tin && (
+                        <div>
+                          <span className="text-xs text-gray-600">TIN</span>
+                          <p className="text-sm font-medium text-gray-900 break-words">
+                            {selectedStockOutDetails.tin}
+                          </p>
+                        </div>
+                      )}
+                      {selectedStockOutDetails.business_style && (
+                        <div>
+                          <span className="text-xs text-gray-600">Business Style</span>
+                          <p className="text-sm font-medium text-gray-900 break-words">
+                            {selectedStockOutDetails.business_style}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* DELIVERY INFORMATION */}
-              <div>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4 pb-2 border-b border-gray-100">
-                  Delivery Information
-                </h3>
-                <div className="space-y-6">
-                  <div>
-                    <dt className="text-sm text-gray-600 mb-1">Delivery Address</dt>
-                    <dd className="text-base text-gray-900 leading-relaxed">
-                      {selectedStockOutDetails.address || 'No address specified'}
-                    </dd>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                    {selectedStockOutDetails.tin && (
-                      <div>
-                        <dt className="text-sm text-gray-600 mb-1">TIN</dt>
-                        <dd className="text-base font-medium text-gray-900">
-                          {selectedStockOutDetails.tin}
-                        </dd>
-                      </div>
-                    )}
-                    {selectedStockOutDetails.business_style && (
-                      <div>
-                        <dt className="text-sm text-gray-600 mb-1">Business Style</dt>
-                        <dd className="text-base font-medium text-gray-900">
-                          {selectedStockOutDetails.business_style}
-                        </dd>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
               {/* PRODUCTS */}
-              <div>
-                <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Products
-                  </h3>
-                  <span className="text-sm font-medium text-gray-700">
+              <div className="pt-4 border-t border-gray-200">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-gray-900">Products</h3>
+                  <span className="text-xs text-gray-600">
                     {selectedStockOutDetails.items?.length || 0} {(selectedStockOutDetails.items?.length || 0) === 1 ? 'item' : 'items'}
                   </span>
                 </div>
                 
                 {selectedStockOutDetails.items && selectedStockOutDetails.items.length > 0 ? (
-                  <div className="space-y-0">
+                  <div className="space-y-0 overflow-x-auto">
                     {/* Desktop table view */}
                     <div className="hidden md:block border border-gray-200 rounded-lg overflow-hidden">
-                      <table className="w-full">
+                      <table className="w-full text-sm">
                         <thead className="bg-gray-50 border-b border-gray-200">
                           <tr>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                              Product
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                              Unit
-                            </th>
-                            <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                              Quantity
-                            </th>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-700">Product</th>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-700">Unit</th>
+                            <th className="px-4 py-3 text-right font-semibold text-gray-700">Quantity</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200 bg-white">
                           {selectedStockOutDetails.items.map((stockItem, idx) => (
                             <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                              <td className="px-6 py-4">
+                              <td className="px-4 py-3">
                                 <div>
-                                  <div className="text-sm font-medium text-gray-900">
+                                  <div className="text-sm font-medium text-gray-900 break-words">
                                     {stockItem.product?.product_name || 'Unknown Product'}
                                   </div>
                                   {stockItem.product?.sku && (
-                                    <div className="text-xs text-gray-500">
+                                    <div className="text-xs text-gray-500 mt-1">
                                       SKU: {stockItem.product.sku}
                                     </div>
                                   )}
                                 </div>
                               </td>
-                              <td className="px-6 py-4 text-sm text-gray-700">
+                              <td className="px-4 py-3 text-sm text-gray-700">
                                 {stockItem.product?.unit || 'pcs'}
                               </td>
-                              <td className="px-6 py-4 text-right">
-                                <span className="text-lg font-semibold text-gray-900">
+                              <td className="px-4 py-3 text-right">
+                                <span className="text-sm font-medium text-gray-900">
                                   {stockItem.stock_out_quantity}
-                                </span>
-                                <span className="text-sm text-gray-600 ml-1">
-                                  {stockItem.product?.unit || 'pcs'}
                                 </span>
                               </td>
                             </tr>
@@ -1045,10 +1191,10 @@ export default function StockOut({ stockOuts, customers, products, auth }) {
                     {/* Mobile card view */}
                     <div className="md:hidden space-y-3">
                       {selectedStockOutDetails.items.map((stockItem, idx) => (
-                        <div key={idx} className="border border-gray-200 rounded-lg p-4 bg-white">
-                          <div className="flex items-start justify-between mb-3">
+                        <div key={idx} className="border border-gray-200 rounded-lg p-3 bg-white">
+                          <div className="flex items-start justify-between mb-2">
                             <div className="min-w-0 flex-1">
-                              <h4 className="text-sm font-medium text-gray-900 truncate">
+                              <h4 className="text-sm font-medium text-gray-900 break-words">
                                 {stockItem.product?.product_name || 'Unknown Product'}
                               </h4>
                               {stockItem.product?.sku && (
@@ -1058,18 +1204,14 @@ export default function StockOut({ stockOuts, customers, products, auth }) {
                               )}
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div className="grid grid-cols-2 gap-3 text-xs mt-3 pt-3 border-t border-gray-100">
                             <div>
-                              <dt className="text-gray-600">Unit</dt>
-                              <dd className="font-medium text-gray-900">
-                                {stockItem.product?.unit || 'pcs'}
-                              </dd>
+                              <span className="text-gray-600">Unit</span>
+                              <p className="font-medium text-gray-900">{stockItem.product?.unit || 'pcs'}</p>
                             </div>
-                            <div>
-                              <dt className="text-gray-600">Quantity</dt>
-                              <dd className="font-semibold text-gray-900 text-right">
-                                {stockItem.stock_out_quantity} {stockItem.product?.unit || 'pcs'}
-                              </dd>
+                            <div className="text-right">
+                              <span className="text-gray-600">Quantity</span>
+                              <p className="font-semibold text-gray-900">{stockItem.stock_out_quantity}</p>
                             </div>
                           </div>
                         </div>
@@ -1077,20 +1219,20 @@ export default function StockOut({ stockOuts, customers, products, auth }) {
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <p>No products found in this request</p>
+                  <div className="text-center py-6 text-gray-500 text-sm">
+                    No products found in this request
                   </div>
                 )}
               </div>
             </div>
 
             {/* FIXED FOOTER */}
-            <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200 flex-shrink-0">
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 flex-shrink-0">
               {selectedStockOutDetails.status === 'approved' && (
                 <button
                   type="button"
                   onClick={() => window.open(`/delivery-receipt/${selectedStockOutDetails.id}/view`, '_blank')}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition-colors"
+                  className="inline-flex items-center gap-2 text-sm font-medium text-blue-700 hover:text-blue-800 transition"
                 >
                   <FileText size={16} />
                   View Delivery Receipt
@@ -1099,7 +1241,7 @@ export default function StockOut({ stockOuts, customers, products, auth }) {
               <button
                 type="button"
                 onClick={() => setSelectedStockOutDetails(null)}
-                className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors"
+                className="text-sm font-medium text-gray-700 hover:text-gray-900 transition"
               >
                 Close
               </button>

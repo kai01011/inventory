@@ -1,7 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
-import { TrendingUp, TrendingDown, Package, BarChart3, Calendar, DollarSign } from 'lucide-react';
+import { Package, BarChart3 } from 'lucide-react';
 
 export default function MonthlyReport({ 
   year, 
@@ -29,19 +29,21 @@ export default function MonthlyReport({
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
 
-  const StatCard = ({ title, value, subValue, icon: Icon, color, bgColor }) => (
-    <div className={`${bgColor} rounded-lg p-6 shadow-sm border border-gray-200`}>
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className={`text-2xl font-bold ${color} mt-1`}>{value}</p>
+  const StatCard = ({ title, value, subValue, icon: Icon }) => (
+    <div className="rounded-lg p-6 border border-gray-200 bg-white">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{title}</p>
+          <p className="text-2xl font-semibold text-gray-900 mt-2">{value}</p>
           {subValue && (
-            <p className="text-sm text-gray-500 mt-1">{subValue}</p>
+            <p className="text-sm text-gray-600 mt-1">{subValue}</p>
           )}
         </div>
-        <div className={`p-3 rounded-full ${color === 'text-green-600' ? 'bg-green-100' : 'bg-red-100'}`}>
-          <Icon className={`w-6 h-6 ${color}`} />
-        </div>
+        {Icon && (
+          <div className="flex-shrink-0">
+            <Icon className="w-5 h-5 text-gray-400" />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -53,54 +55,68 @@ export default function MonthlyReport({
     }).format(amount);
   };
 
+  const formatNetChange = (value) => {
+    if (value === 0) return '0';
+    return value > 0 ? `+${value}` : `${value}`;
+  };
+
   return (
     <AuthenticatedLayout>
       <Head title="Monthly Report" />
 
-      <div className="p-8 bg-white min-h-screen">
-        <div className="max-w-7xl mx-auto">
+      <div className="bg-white min-h-screen">
+        <div className="p-6 md:p-8 max-w-7xl mx-auto">
           
           {/* Header */}
           <div className="mb-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Monthly Report</h1>
-                <p className="text-gray-600 text-sm mt-1">
-                  Inventory transactions and statistics for {monthName} {year}
-                </p>
-              </div>
-              <div className="flex items-center gap-4">
-                <Calendar className="w-5 h-5 text-gray-400" />
-                <select
-                  value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  {months.map((monthName, index) => (
-                    <option key={index + 1} value={index + 1}>
-                      {monthName}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                  className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  {years.map(year => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={handleDateChange}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition"
-                >
-                  Update
-                </button>
-              </div>
+            <h1 className="text-xl font-bold text-gray-900" style={{ fontSize: '20px' }}>
+              Monthly Report
+            </h1>
+            <p className="text-gray-600 text-sm mt-1">
+              Inventory transactions and statistics for {monthName} {year}
+            </p>
+          </div>
+
+          {/* Filter Controls */}
+          <div className="flex flex-wrap items-end gap-4 mb-8">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Month
+              </label>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
+                className="h-10 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                {months.map((monthName, index) => (
+                  <option key={index + 1} value={index + 1}>
+                    {monthName}
+                  </option>
+                ))}
+              </select>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Year
+              </label>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                className="h-10 px-3 py-2 border border-gray-300 rounded-md bg-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                {years.map(year => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={handleDateChange}
+              className="h-10 px-4 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 transition"
+            >
+              Update
+            </button>
           </div>
 
           {/* Stats Cards */}
@@ -109,81 +125,59 @@ export default function MonthlyReport({
               title="Stock In Transactions"
               value={stockInStats.transactionCount}
               subValue={`${stockInStats.uniqueProducts} unique products`}
-              icon={TrendingUp}
-              color="text-green-600"
-              bgColor="bg-green-50"
+              icon={BarChart3}
             />
             <StatCard
-              title="Items Added"
+              title="Quantity Received"
               value={stockInStats.totalItemsAdded.toLocaleString()}
-              subValue={formatCurrency(stockInStats.totalValue)}
+              subValue={`Value received: ${formatCurrency(stockInStats.totalValue)}`}
               icon={Package}
-              color="text-green-600"
-              bgColor="bg-green-50"
             />
             <StatCard
               title="Stock Out Transactions"
               value={stockOutStats.transactionCount}
               subValue={`${stockOutStats.uniqueProducts} unique products`}
-              icon={TrendingDown}
-              color="text-red-600"
-              bgColor="bg-red-50"
+              icon={BarChart3}
             />
             <StatCard
-              title="Items Removed"
+              title="Quantity Released"
               value={stockOutStats.totalItemsOut.toLocaleString()}
-              subValue={formatCurrency(stockOutStats.totalValue)}
+              subValue={`Value released: ${formatCurrency(stockOutStats.totalValue)}`}
               icon={Package}
-              color="text-red-600"
-              bgColor="bg-red-50"
             />
           </div>
 
           {/* Summary Card */}
-          <div className="bg-gray-50 rounded-lg p-6 mb-8 border border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <BarChart3 className="w-5 h-5" />
+          <div className="rounded-lg p-6 border border-gray-200 bg-white mb-8">
+            <h3 className="text-sm font-semibold text-gray-900 mb-6 uppercase tracking-wide">
               {monthName} {year} Summary
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <p className="text-sm text-gray-600">Net Item Movement</p>
-                <p className={`text-2xl font-bold mt-1 ${
-                  (stockInStats.totalItemsAdded - stockOutStats.totalItemsOut) >= 0 
-                    ? 'text-green-600' 
-                    : 'text-red-600'
-                }`}>
-                  {(stockInStats.totalItemsAdded - stockOutStats.totalItemsOut) >= 0 ? '+' : ''}
-                  {(stockInStats.totalItemsAdded - stockOutStats.totalItemsOut).toLocaleString()}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Net Quantity Change</p>
+                <p className="text-2xl font-semibold text-gray-900 mt-2">
+                  {formatNetChange(stockInStats.totalItemsAdded - stockOutStats.totalItemsOut)}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">Items added - Items removed</p>
               </div>
-              <div className="text-center">
-                <p className="text-sm text-gray-600">Total Transactions</p>
-                <p className="text-2xl font-bold text-blue-600 mt-1">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Transactions</p>
+                <p className="text-2xl font-semibold text-gray-900 mt-2">
                   {stockInStats.transactionCount + stockOutStats.transactionCount}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">Stock In + Stock Out</p>
               </div>
-              <div className="text-center">
-                <p className="text-sm text-gray-600">Net Value Movement</p>
-                <p className={`text-2xl font-bold mt-1 ${
-                  (stockInStats.totalValue - stockOutStats.totalValue) >= 0 
-                    ? 'text-green-600' 
-                    : 'text-red-600'
-                }`}>
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Net Value Change</p>
+                <p className="text-2xl font-semibold text-gray-900 mt-2">
                   {formatCurrency(stockInStats.totalValue - stockOutStats.totalValue)}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">Value In - Value Out</p>
               </div>
             </div>
           </div>
 
-          {/* Monthly Breakdown Chart */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          {/* Monthly Breakdown Table */}
+          <div className="rounded-lg border border-gray-200 bg-white">
             <div className="p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <BarChart3 className="w-5 h-5" />
+              <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
                 {year} Monthly Breakdown
               </h3>
               <p className="text-sm text-gray-600 mt-1">
@@ -195,49 +189,52 @@ export default function MonthlyReport({
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-2 font-medium text-gray-700">Month</th>
-                      <th className="text-right py-3 px-2 font-medium text-green-700">Stock In Transactions</th>
-                      <th className="text-right py-3 px-2 font-medium text-green-700">Items Added</th>
-                      <th className="text-right py-3 px-2 font-medium text-red-700">Stock Out Transactions</th>
-                      <th className="text-right py-3 px-2 font-medium text-red-700">Items Removed</th>
-                      <th className="text-right py-3 px-2 font-medium text-blue-700">Net Items</th>
+                      <th className="text-left py-3 px-3 font-medium text-gray-700 text-xs uppercase tracking-wide">Month</th>
+                      <th className="text-right py-3 px-3 font-medium text-gray-700 text-xs uppercase tracking-wide">Stock In Transactions</th>
+                      <th className="text-right py-3 px-3 font-medium text-gray-700 text-xs uppercase tracking-wide">Quantity Received</th>
+                      <th className="text-right py-3 px-3 font-medium text-gray-700 text-xs uppercase tracking-wide">Stock Out Transactions</th>
+                      <th className="text-right py-3 px-3 font-medium text-gray-700 text-xs uppercase tracking-wide">Quantity Released</th>
+                      <th className="text-right py-3 px-3 font-medium text-gray-700 text-xs uppercase tracking-wide">Net Quantity</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody>
                     {monthlyBreakdown.map((monthData, index) => {
                       const netItems = monthData.stockIn.items - monthData.stockOut.items;
-                      const isCurrentMonth = monthData.month === month;
+                      const isSelectedMonth = monthData.month === month;
                       
                       return (
                         <tr 
                           key={index} 
-                          className={`hover:bg-gray-50 ${isCurrentMonth ? 'bg-blue-50 border-blue-200' : ''}`}
+                          className={`border-b border-gray-100 hover:bg-gray-50 transition ${
+                            isSelectedMonth ? 'bg-blue-50' : ''
+                          }`}
                         >
-                          <td className={`py-3 px-2 font-medium ${isCurrentMonth ? 'text-blue-900' : 'text-gray-900'}`}>
-                            {monthData.monthName}
-                            {isCurrentMonth && (
-                              <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                Current
-                              </span>
-                            )}
+                          <td className={`py-3 px-3 font-medium ${
+                            isSelectedMonth ? 'text-gray-900' : 'text-gray-700'
+                          }`}>
+                            <div className="flex items-center gap-2">
+                              {monthData.monthName}
+                              {isSelectedMonth && (
+                                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-medium">
+                                  Selected
+                                </span>
+                              )}
+                            </div>
                           </td>
-                          <td className="py-3 px-2 text-right text-green-600 font-medium">
+                          <td className="py-3 px-3 text-right text-gray-700">
                             {monthData.stockIn.transactions}
                           </td>
-                          <td className="py-3 px-2 text-right text-green-600">
+                          <td className="py-3 px-3 text-right text-gray-700">
                             {monthData.stockIn.items.toLocaleString()}
                           </td>
-                          <td className="py-3 px-2 text-right text-red-600 font-medium">
+                          <td className="py-3 px-3 text-right text-gray-700">
                             {monthData.stockOut.transactions}
                           </td>
-                          <td className="py-3 px-2 text-right text-red-600">
+                          <td className="py-3 px-3 text-right text-gray-700">
                             {monthData.stockOut.items.toLocaleString()}
                           </td>
-                          <td className={`py-3 px-2 text-right font-medium ${
-                            netItems >= 0 ? 'text-green-600' : 'text-red-600'
-                          }`}>
-                            {netItems >= 0 ? '+' : ''}
-                            {netItems.toLocaleString()}
+                          <td className="py-3 px-3 text-right font-medium text-gray-900">
+                            {formatNetChange(netItems)}
                           </td>
                         </tr>
                       );

@@ -74,7 +74,6 @@ Route::middleware('auth')->group(function () {
     
     // Stock Out - Creation only (no delete)
     Route::post('/stock-out', [StockOutController::class, 'store'])->name('stock-out.store');
-    Route::get('/stock-out/debug', [StockOutController::class, 'debug'])->name('stock-out.debug');
     
     // Table viewer routes
     Route::get('/tables/{table}', [TableViewController::class, 'show'])->name('tables.show');

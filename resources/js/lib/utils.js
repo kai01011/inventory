@@ -1,7 +1,6 @@
 import { clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
-import { usePage, router } from '@inertiajs/react'
-import { useEffect } from 'react'
+import { usePage } from '@inertiajs/react'
 
 /**
  * Merge Tailwind CSS classes intelligently
@@ -9,39 +8,6 @@ import { useEffect } from 'react'
  */
 export function cn(...inputs) {
   return twMerge(clsx(inputs))
-}
-
-/**
- * Access page props from Inertia
- * Provides easy access to auth, errors, flash messages, etc.
- */
-export function usePageProps() {
-  return usePage().props
-}
-
-/**
- * Navigate using Inertia
- * @param {string} url - The URL to navigate to
- * @param {object} options - Navigation options
- */
-export function navigateTo(url, options = {}) {
-  router.visit(url, {
-    method: 'get',
-    ...options
-  })
-}
-
-/**
- * Submit form data via POST using Inertia
- * @param {string} url - The URL to submit to
- * @param {object} data - Form data to submit
- * @param {object} options - Additional options
- */
-export function submitForm(url, data, options = {}) {
-  router.post(url, data, {
-    preserveScroll: true,
-    ...options
-  })
 }
 
 /**
@@ -56,14 +22,6 @@ export function useErrors(field = null) {
   }
   
   return errors[field] ? errors[field] : null
-}
-
-/**
- * Get flash messages from server
- * @returns {object} Flash messages object
- */
-export function useFlash() {
-  return usePage().props.flash || {}
 }
 
 /**
@@ -98,39 +56,5 @@ export function formatDate(date, format = 'MMM dd, yyyy') {
     month: 'short',
     day: 'numeric'
   }).format(d)
-}
-
-/**
- * Debounce a function
- * @param {function} func - Function to debounce
- * @param {number} wait - Debounce delay in ms
- */
-export function debounce(func, wait = 300) {
-  let timeout
-  return function(...args) {
-    clearTimeout(timeout)
-    timeout = setTimeout(() => func(...args), wait)
-  }
-}
-
-/**
- * Check if object is empty
- * @param {object} obj - Object to check
- */
-export function isEmpty(obj) {
-  return Object.keys(obj).length === 0
-}
-
-/**
- * Get query parameters from URL
- * @returns {object} Query parameters
- */
-export function getQueryParams() {
-  const params = new URLSearchParams(window.location.search)
-  const obj = {}
-  for (const [key, value] of params) {
-    obj[key] = value
-  }
-  return obj
 }
 

@@ -1,22 +1,25 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, ChevronDown, LogOut, Calendar, Menu, User, Search, Users } from 'lucide-react';
-import { router } from '@inertiajs/react';
+import { ChevronDown, LogOut, Menu, User, Search, Users } from 'lucide-react';
+import { usePage, Link } from '@inertiajs/react';
 import NotificationBell from './NotificationBell';
 import SearchInput from './SearchInput';
-import { getCurrentTime, getTimeBasedGreeting } from '@/utils/dateUtils';
+import { getCurrentTime } from '@/utils/dateUtils';
 
-export default function DashboardHeader({ user, onSearch, searchTerm: externalSearchTerm, setSearchTerm: externalSetSearchTerm }) {
+export default function DashboardHeader({ user, onSearch, searchTerm: externalSearchTerm, setSearchTerm: externalSetSearchTerm, onToggleSidebar }) {
+    const { component } = usePage();
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [showMobileSearch, setShowMobileSearch] = useState(false);
     const userMenuRef = useRef(null);
 
-    // Get current time and date using corrected date utility
+    // Get current date
     const currentTime = getCurrentTime();
-    const currentHour = currentTime.hour;
-    const currentDate = currentTime.longDate;
 
-    // Dynamic greeting based on time
-    const getGreeting = () => getTimeBasedGreeting();
+    // Determine page title based on component name
+    const getPageTitle = () => {
+        if (component === 'Dashboard') return 'Dashboard';
+        // Return component name with spaces for other pages
+        return component?.replace(/([A-Z])/g, ' $1').trim() || 'Page';
+    };
 
     // Close user menu on outside click
     useEffect(() => {
@@ -38,30 +41,35 @@ export default function DashboardHeader({ user, onSearch, searchTerm: externalSe
 
     return (
         <>
-            <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                    {/* Left side - Greeting Section */}
-                    <div className="flex flex-col min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                            <h1 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">
-                                {getGreeting()}, {user?.name?.split(' ')[0] || 'Staff'} ??
+            <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 sm:px-6 h-16 flex items-center shadow-sm">
+                <div className="flex items-center justify-between w-full gap-4">
+                    {/* Left side - Toggle and Title */}
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                        {/* Sidebar Toggle Button */}
+                        <button
+                            onClick={onToggleSidebar}
+                            className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                            title="Toggle sidebar"
+                            aria-label="Toggle navigation"
+                        >
+                            <Menu size={20} />
+                        </button>
+
+                        {/* Page Title */}
+                        <div className="flex items-center gap-2 min-w-0">
+                            <h1 className="text-lg sm:text-xl font-semibold text-gray-900 whitespace-nowrap">
+                                {getPageTitle()}
                             </h1>
-                        </div>
-                        <p className="text-sm text-gray-600 mt-1 hidden sm:block">
-                            Here's your inventory overview for today.
-                        </p>
-                        <div className="flex items-center gap-1 mt-1">
-                            <Calendar size={14} className="text-gray-400" />
-                            <span className="text-xs text-gray-500">{currentDate}</span>
                         </div>
                     </div>
 
                     {/* Right side - Search, Notifications, User Menu */}
-                    <div className="flex items-center gap-2 sm:gap-4 ml-4">
+                    <div className="flex items-center gap-3 ml-auto flex-shrink-0">
                         {/* Mobile Search Button */}
                         <button
                             onClick={() => setShowMobileSearch(true)}
-                            className="block md:hidden p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors"
+                            className="block md:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                            aria-label="Search"
                         >
                             <Search size={18} />
                         </button>
@@ -73,10 +81,10 @@ export default function DashboardHeader({ user, onSearch, searchTerm: externalSe
                                 onSearch={onSearch}
                                 searchTerm={externalSearchTerm}
                                 setSearchTerm={externalSetSearchTerm}
-                                placeholder="Search products, suppliers, categories..."
-                                width="w-80"
+                                placeholder="Search inventory…"
+                                width="w-64"
                                 size="md"
-                                showShortcut={true}
+                                showShortcut={false}
                             />
                         </div>
 
@@ -87,9 +95,9 @@ export default function DashboardHeader({ user, onSearch, searchTerm: externalSe
                                 onSearch={onSearch}
                                 searchTerm={externalSearchTerm}
                                 setSearchTerm={externalSetSearchTerm}
-                                placeholder="Search..."
+                                placeholder="Search inventory…"
                                 width="w-48"
-                                size="md"
+                                size="sm"
                             />
                         </div>
 
@@ -102,19 +110,21 @@ export default function DashboardHeader({ user, onSearch, searchTerm: externalSe
                         <div className="relative" ref={userMenuRef}>
                             <button
                                 onClick={() => setShowUserMenu(!showUserMenu)}
-                                className="flex items-center gap-2 px-2 sm:px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors duration-150"
+                                className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors duration-150"
                                 aria-expanded={showUserMenu}
                                 aria-haspopup="true"
+                                aria-label="Account menu"
                             >
-                                <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center flex-shrink-0">
-                                    <User size={16} className="text-white" />
+                                {/* User Avatar with Initials */}
+                                <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-semibold text-gray-700">
+                                    {user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
                                 </div>
                                 <span className="text-sm font-medium text-gray-700 hidden sm:block">
-                                    {user?.name?.split(' ')[0] || 'Staff'}
+                                    {user?.name?.split(' ')[0] || 'User'}
                                 </span>
                                 <ChevronDown 
                                     size={16} 
-                                    className={`text-gray-400 transition-transform duration-150 hidden sm:block ${showUserMenu ? 'rotate-180' : ''}`}
+                                    className={`text-gray-500 transition-transform duration-150 hidden sm:block ${showUserMenu ? 'rotate-180' : ''}`}
                                 />
                             </button>
 
@@ -125,8 +135,8 @@ export default function DashboardHeader({ user, onSearch, searchTerm: externalSe
                                         {/* User Info Header */}
                                         <div className="px-4 py-3 border-b border-gray-100">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center flex-shrink-0">
-                                                    <User size={18} className="text-white" />
+                                                <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-semibold text-gray-700">
+                                                    {user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
                                                 </div>
                                                 <div className="min-w-0 flex-1">
                                                     <div className="font-medium text-gray-900 truncate">
@@ -145,13 +155,13 @@ export default function DashboardHeader({ user, onSearch, searchTerm: externalSe
                                         {/* User Management - Admin Only */}
                                         {user?.role?.role_name === 'Admin' && (
                                             <div className="border-b border-gray-100 pb-2">
-                                                <button
-                                                    onClick={() => router.visit('/users')}
-                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3"
+                                                <Link
+                                                    href="/users"
+                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors block"
                                                 >
                                                     <Users size={16} className="text-gray-500" />
                                                     User Management
-                                                </button>
+                                                </Link>
                                             </div>
                                         )}
 
@@ -159,7 +169,7 @@ export default function DashboardHeader({ user, onSearch, searchTerm: externalSe
                                         <div className="pt-2">
                                             <button
                                                 onClick={handleLogout}
-                                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 font-medium"
+                                                className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 font-medium transition-colors"
                                             >
                                                 <LogOut size={16} className="text-red-500" />
                                                 Logout
@@ -179,15 +189,16 @@ export default function DashboardHeader({ user, onSearch, searchTerm: externalSe
                     <div className="flex items-center gap-3 p-4 border-b border-gray-200">
                         <button
                             onClick={() => setShowMobileSearch(false)}
-                            className="p-2 text-gray-600 hover:text-gray-800"
+                            className="p-2 text-gray-600 hover:text-gray-900"
+                            aria-label="Close search"
                         >
-                            ?
+                            ✕
                         </button>
                         <SearchInput
                             onSearch={onSearch}
                             searchTerm={externalSearchTerm}
                             setSearchTerm={externalSetSearchTerm}
-                            placeholder="Search products, suppliers, categories..."
+                            placeholder="Search inventory…"
                             className="flex-1"
                             width=""
                             size="lg"
@@ -197,7 +208,7 @@ export default function DashboardHeader({ user, onSearch, searchTerm: externalSe
                     </div>
                     <div className="p-4">
                         <p className="text-sm text-gray-500 text-center">
-                            Start typing to search inventory...
+                            Start typing to search…
                         </p>
                     </div>
                 </div>

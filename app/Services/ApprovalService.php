@@ -161,6 +161,22 @@ class ApprovalService
         \DB::beginTransaction();
 
         try {
+            // Verify stock availability BEFORE updating anything
+            foreach ($stockOut->items as $item) {
+                $product = Product::lockForUpdate()->find($item->product_id);
+                if (!$product) {
+                    throw new \Exception("Product ID {$item->product_id} not found");
+                }
+                
+                if ($product->quantity < $item->stock_out_quantity) {
+                    \DB::rollBack();
+                    throw new \Exception(
+                        "Insufficient stock for '{$product->product_name}'. " .
+                        "Available: {$product->quantity}, Requested: {$item->stock_out_quantity}"
+                    );
+                }
+            }
+
             // Update stock out status and mark as approved
             $stockOut->update([
                 'status' => 'approved',
@@ -171,17 +187,20 @@ class ApprovalService
 
             // Process each item and decrement product quantity
             foreach ($stockOut->items as $item) {
-                $product = Product::find($item->product_id);
+                // Use locking to prevent concurrent modifications
+                $product = Product::lockForUpdate()->find($item->product_id);
                 if ($product) {
-                    // Decrement product quantity
+                    // Decrement product quantity (already validated above)
+                    $newQty = $product->quantity - $item->stock_out_quantity;
                     $product->update([
-                        'quantity' => max(0, $product->quantity - $item->stock_out_quantity),
+                        'quantity' => $newQty,
                         'updated_at' => now(),
                     ]);
 
-                    // Also decrement stock_in_items quantity
+                    // Also decrement stock_in_items quantity (FIFO - oldest first)
                     $stockInItems = StockInItem::where('product_id', $item->product_id)
-                        ->orderBy('created_at', 'desc')
+                        ->orderBy('created_at', 'asc')  // FIFO: oldest items first
+                        ->lockForUpdate()
                         ->get();
 
                     $remainingQty = $item->stock_out_quantity;
@@ -192,10 +211,14 @@ class ApprovalService
                         }
 
                         $currentQty = $stockInItem->stock_in_quantity;
+                        if ($currentQty <= 0) {
+                            continue;
+                        }
+
                         $decreaseBy = min($remainingQty, $currentQty);
 
                         $stockInItem->update([
-                            'stock_in_quantity' => max(0, $currentQty - $decreaseBy),
+                            'stock_in_quantity' => $currentQty - $decreaseBy,
                             'updated_at' => now(),
                         ]);
 

@@ -5,5 +5,5 @@ export default function Header({ sidebarOpen, onToggleSidebar, onSearch, searchT
     const { auth } = usePage().props;
 
     // Always use DashboardHeader design for all pages
-    return <DashboardHeader user={auth.user} onSearch={onSearch} searchTerm={searchTerm} setSearchTerm={setSearchTerm} />;
+    return <DashboardHeader user={auth.user} onToggleSidebar={onToggleSidebar} onSearch={onSearch} searchTerm={searchTerm} setSearchTerm={setSearchTerm} />;
 }

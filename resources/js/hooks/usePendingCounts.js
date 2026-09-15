@@ -35,8 +35,24 @@ export function usePendingCounts() {
         if (auth?.user) {
             fetchPendingCounts();
             
-            // Refresh counts every 30 seconds
-            const interval = setInterval(fetchPendingCounts, 30000);
+            let interval;
+
+            // Page visibility API: pause refresh when tab is hidden
+            const handleVisibilityChange = () => {
+                if (document.hidden) {
+                    if (interval) clearInterval(interval);
+                } else {
+                    // Resume refresh when tab becomes visible
+                    interval = setInterval(fetchPendingCounts, 60000); // 60 seconds (reduced from 30s)
+                }
+            };
+
+            // Start initial interval only if tab is visible
+            if (!document.hidden) {
+                interval = setInterval(fetchPendingCounts, 60000); // 60 seconds
+            }
+
+            document.addEventListener('visibilitychange', handleVisibilityChange);
             
             // Listen for custom events to refresh immediately
             const handleRefreshCounts = () => {
@@ -46,7 +62,8 @@ export function usePendingCounts() {
             window.addEventListener('refreshPendingCounts', handleRefreshCounts);
             
             return () => {
-                clearInterval(interval);
+                if (interval) clearInterval(interval);
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
                 window.removeEventListener('refreshPendingCounts', handleRefreshCounts);
             };
         }

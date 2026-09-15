@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Plus, Pencil, Trash2, AlertTriangle } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -31,6 +31,7 @@ export default function Customers({ customers }) {
     processing: editProcessing,
     errors: editErrors,
     reset: editReset,
+    clearErrors: clearEditErrors,
   } = useForm({
     customer_name: '',
   });
@@ -40,11 +41,13 @@ export default function Customers({ customers }) {
     processing: deleteProcessing,
   } = useForm({});
 
-  // Filter customers based on search term - starts with
-  const filteredCustomers = customers && customers.filter(customer => {
-    if (!searchTerm) return true;
-    return customer.customer_name.toLowerCase().startsWith(searchTerm.toLowerCase());
-  });
+  // Memoize filtered customers to avoid recalculating on every render
+  const filteredCustomers = useMemo(() => {
+    return customers && customers.filter(customer => {
+      if (!searchTerm) return true;
+      return customer.customer_name.toLowerCase().startsWith(searchTerm.toLowerCase());
+    });
+  }, [customers, searchTerm]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -57,6 +60,7 @@ export default function Customers({ customers }) {
   };
 
   const handleEditOpen = (customer) => {
+    clearEditErrors();
     setEditingCustomer(customer);
     setEditData('customer_name', customer.customer_name);
     setEditOpen(true);
@@ -93,15 +97,11 @@ export default function Customers({ customers }) {
       
       <div className="p-8 bg-white min-h-screen">
         <div className="max-w-6xl mx-auto">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Customers</h1>
-              <p className="text-gray-600 text-sm mt-1">Manage your customers {searchTerm && `(${filteredCustomers?.length || 0} results)`}</p>
-            </div>
+          {/* Toolbar */}
+          <div className="flex items-center justify-between mb-6">
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
-                <Button className="gap-2 bg-red-600 hover:bg-red-700">
+                <Button className="gap-2 bg-red-600 hover:bg-red-700 text-white">
                   <Plus size={18} />
                   Add customer
                 </Button>
@@ -142,7 +142,7 @@ export default function Customers({ customers }) {
                     <Button
                       type="submit"
                       disabled={processing}
-                      className="bg-red-600 hover:bg-red-700"
+                      className="bg-red-600 hover:bg-red-700 text-white"
                     >
                       {processing ? 'Adding...' : 'Add Customer'}
                     </Button>
@@ -157,32 +157,32 @@ export default function Customers({ customers }) {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">ID</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Customer Name</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Actions</th>
+                  <th className="hidden sm:table-cell px-3 sm:px-4 py-3 text-left text-sm font-semibold text-gray-900 min-w-[60px]">ID</th>
+                  <th className="px-3 sm:px-4 py-3 text-left text-sm font-semibold text-gray-900 min-w-[150px]">Customer Name</th>
+                  <th className="px-3 sm:px-4 py-3 text-center text-sm font-semibold text-gray-900 min-w-[100px]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {filteredCustomers && filteredCustomers.length > 0 ? (
                   filteredCustomers.map((customer, idx) => (
                     <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{customer.id}</td>
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{customer.customer_name}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-1.5">
+                      <td className="hidden sm:table-cell px-3 sm:px-4 py-3 text-sm font-medium text-gray-900">{customer.id}</td>
+                      <td className="px-3 sm:px-4 py-3 text-sm font-medium text-gray-900">{customer.customer_name}</td>
+                      <td className="px-3 sm:px-4 py-3">
+                        <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={() => handleEditOpen(customer)}
                             title="Edit customer"
                             className="group inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white shadow-sm hover:shadow-blue-200 hover:shadow-md transition-all duration-200"
                           >
-                            <Pencil size={14} className="group-hover:scale-110 transition-transform duration-200" />
+                            <Pencil size={16} className="group-hover:scale-110 transition-transform duration-200" />
                           </button>
                           <button
                             onClick={() => handleDeleteOpen(customer)}
                             title="Delete customer"
                             className="group inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-600 hover:bg-red-600 hover:text-white shadow-sm hover:shadow-red-200 hover:shadow-md transition-all duration-200"
                           >
-                            <Trash2 size={14} className="group-hover:scale-110 transition-transform duration-200" />
+                            <Trash2 size={16} className="group-hover:scale-110 transition-transform duration-200" />
                           </button>
                         </div>
                       </td>
@@ -190,7 +190,7 @@ export default function Customers({ customers }) {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="3" className="px-6 py-8 text-center text-sm text-gray-600">
+                    <td colSpan="3" className="px-3 sm:px-4 py-8 text-center text-sm text-gray-600">
                       {searchTerm ? 'No customers match your search' : 'No customers found'}
                     </td>
                   </tr>
@@ -204,18 +204,16 @@ export default function Customers({ customers }) {
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={(isOpen) => {
         setEditOpen(isOpen);
-        if (!isOpen) setEditingCustomer(null);
+        if (!isOpen) {
+          clearEditErrors();
+          setEditingCustomer(null);
+        }
       }}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Edit Customer</DialogTitle>
-            <DialogDescription>
-              Update the customer name
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleEditSubmit} className="space-y-4">
+        <DialogContent className="sm:max-w-[420px] p-6">
+          <DialogTitle className="text-lg font-semibold text-gray-900 mb-5">Edit Customer</DialogTitle>
+          <form onSubmit={handleEditSubmit} className="flex flex-col gap-5">
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-1">
+              <label htmlFor="edit_customer_name" className="block text-sm font-medium text-gray-900 mb-1.5">
                 Customer Name
               </label>
               <input
@@ -224,28 +222,37 @@ export default function Customers({ customers }) {
                 name="customer_name"
                 value={editData.customer_name}
                 onChange={(e) => setEditData('customer_name', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                className={`w-full px-3 py-2.5 border rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-red-500 transition ${
+                  editErrors.customer_name
+                    ? 'border-red-500 focus:ring-red-500'
+                    : 'border-gray-300 focus:ring-red-500'
+                }`}
                 placeholder="Enter customer name"
               />
-              {editErrors.customer_name && <p className="text-red-600 text-sm mt-1">{editErrors.customer_name}</p>}
+              {editErrors.customer_name && (
+                <p className="text-red-600 text-xs mt-1">
+                  {editErrors.customer_name === 'The customer name has already been taken.' 
+                    ? 'A customer with this name already exists.'
+                    : editErrors.customer_name}
+                </p>
+              )}
             </div>
 
-            <div className="flex justify-end gap-3 pt-4">
-              <Button
+            <div className="flex justify-end gap-2.5 mt-4">
+              <button
                 type="button"
                 onClick={() => setEditOpen(false)}
-                variant="outline"
-                className="border border-gray-300 text-gray-900 hover:bg-gray-50"
+                className="px-4 h-10 text-sm font-medium text-gray-700 border border-gray-300 bg-white hover:bg-gray-50 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
               >
                 Cancel
-              </Button>
-              <Button
+              </button>
+              <button
                 type="submit"
                 disabled={editProcessing}
-                className="bg-red-600 hover:bg-red-700"
+                className="px-4 h-10 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
               >
                 {editProcessing ? 'Saving...' : 'Save Changes'}
-              </Button>
+              </button>
             </div>
           </form>
         </DialogContent>

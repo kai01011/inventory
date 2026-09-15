@@ -132,6 +132,20 @@ class StockInController extends Controller
     public function destroy($id)
     {
         $stockIn = StockIn::findOrFail($id);
+        
+        // Only allow deletion of pending stock ins
+        if ($stockIn->status !== 'pending') {
+            abort(403, 'Can only delete pending stock in requests. Current status: ' . $stockIn->status);
+        }
+        
+        // Only admin or the requester can delete
+        $isAdmin = auth()->user()->role->role_name === 'Admin';
+        $isRequester = $stockIn->requested_by_id === auth()->id();
+        
+        if (!$isAdmin && !$isRequester) {
+            abort(403, 'Only administrators or the requester can delete this stock in.');
+        }
+        
         // Delete all items first
         $stockIn->items()->delete();
         // Then delete the stock in request

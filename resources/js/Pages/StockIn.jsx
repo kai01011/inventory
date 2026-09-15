@@ -170,6 +170,11 @@ export default function StockIn({ stockIns, products, categories, suppliers }) {
       return;
     }
 
+    // Prevent duplicate submissions
+    if (isSubmitting) {
+      return;
+    }
+
     setIsSubmitting(true);
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -270,9 +275,10 @@ export default function StockIn({ stockIns, products, categories, suppliers }) {
     setConfirmModal({
       isOpen: true,
       type: 'success',
-      title: 'Approve Stock In Request',
-      message: 'Are you sure you want to approve this stock in request? Products will be added to inventory.',
-      confirmText: 'Approve',
+      title: 'Approve Stock In Request?',
+      message: 'Approving this request will add its products to inventory.',
+      requestId: id,
+      confirmText: 'Approve Request',
       onConfirm: () => {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         
@@ -369,453 +375,472 @@ export default function StockIn({ stockIns, products, categories, suppliers }) {
   const renderRequestDialog = () => (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="gap-2 bg-red-600 hover:bg-red-700 h-9 text-sm">
+        <Button className="gap-2 bg-red-600 hover:bg-red-700 h-10 text-white font-medium text-sm">
           <Plus size={18} />
-          Request Product
+          Add Stock In Request
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Request Products for Stock In</DialogTitle>
-          <DialogDescription>
-            Add products to your stock in request
-          </DialogDescription>
+      <DialogContent className="sm:max-w-[640px] max-h-[90vh] flex flex-col">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-200">
+          <DialogTitle className="text-xl font-semibold">Add Stock In Request</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 max-h-[80vh] overflow-y-auto">
-          {/* Product Name with Dropdown */}
-          <div className="relative">
-            <label className="block text-sm font-medium text-gray-900 mb-1">
-              Product Name
-            </label>
-            <input
-              id="product_name"
-              type="text"
-              name="product_name"
-              value={currentItem.product_name}
-              onChange={(e) => {
-                setCurrentItem({ ...currentItem, product_name: e.target.value });
-                setShowProductDropdown(true);
-              }}
-              onFocus={() => setShowProductDropdown(true)}
-              onBlur={() => setTimeout(() => setShowProductDropdown(false), 200)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
-              placeholder="e.g., CCTV Camera, UPS, Network Switch"
-            />
-            {showProductDropdown && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto z-10">
-                {filteredProducts && filteredProducts.length > 0 ? (
-                  <>
-                    {filteredProducts.map((prod) => (
-                      <div key={prod.id} className="px-3 py-2 border-b border-gray-100">
-                        <div className="flex items-center justify-between gap-2">
-                          <div
-                            onClick={() => {
-                              // Handle both properly linked data (via relationships) and legacy data (direct names in fields)
-                              const categoryName = prod.category?.category_name || prod.category_id || '';
-                              const supplierName = prod.supplier?.supplier_name || prod.supplier_id || '';
-                              setCurrentItem({
-                                ...currentItem,
-                                product_name: prod.product_name,
-                                category_id: categoryName,
-                                supplier_id: supplierName,
-                                unit: prod.unit || '',
-                                price: prod.price || '',
-                                barcode: prod.barcode || '',
-                                serial_no: prod.serial_no || '',
-                              });
-                              setShowProductDropdown(false);
-                              setShowCategoryDropdown(false);
-                              setShowSupplierDropdown(false);
-                              // Force React to update by logging
-                              console.log('Auto-filled - Category:', categoryName, 'Supplier:', supplierName);
-                            }}
-                            className="flex-1 hover:bg-blue-50 cursor-pointer py-2 px-2 rounded text-sm"
-                          >
-                            <div className="font-medium text-gray-900">{prod.product_name}</div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedProductDetails(prod)}
-                            className="text-blue-600 hover:text-blue-800 text-xs font-semibold px-2 py-1 bg-blue-50 rounded hover:bg-blue-100 transition"
-                          >
-                            Details
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                    <div className="border-t border-gray-200 px-3 py-2 text-xs text-gray-500">
-                      Or type to create new
-                    </div>
-                  </>
-                ) : (
-                  <div className="px-3 py-2 text-sm text-gray-500">
-                    Type to create new product
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Product Details Modal */}
-            {selectedProductDetails && (
-              <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-6 max-w-lg w-full max-h-[80vh] overflow-y-auto shadow-2xl">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-gray-900">{selectedProductDetails.product_name}</h3>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedProductDetails(null)}
-                      className="text-gray-500 hover:text-gray-700 text-2xl"
-                    >
-                      ×
-                    </button>
-                  </div>
-
-                  <div className="space-y-3 text-sm">
-                    <div className="bg-gray-50 p-3 rounded">
-                      <span className="font-semibold text-gray-900">Category:</span>
-                      <p className="text-gray-700">{selectedProductDetails.category?.category_name || selectedProductDetails.category_id || 'Not assigned'}</p>
-                    </div>
-
-                    <div className="bg-gray-50 p-3 rounded">
-                      <span className="font-semibold text-gray-900">Supplier:</span>
-                      <p className="text-gray-700">{selectedProductDetails.supplier?.supplier_name || selectedProductDetails.supplier_id || 'Not assigned'}</p>
-                    </div>
-
-                    <div className="bg-gray-50 p-3 rounded">
-                      <span className="font-semibold text-gray-900">Barcode:</span>
-                      <p className="text-gray-700 font-mono">{selectedProductDetails.barcode || '-'}</p>
-                    </div>
-
-                    <div className="bg-gray-50 p-3 rounded">
-                      <span className="font-semibold text-gray-900">Serial No:</span>
-                      <p className="text-gray-700 font-mono">{selectedProductDetails.serial_no || '-'}</p>
-                    </div>
-
-                    <div className="bg-gray-50 p-3 rounded">
-                      <span className="font-semibold text-gray-900">Unit:</span>
-                      <p className="text-gray-700">{selectedProductDetails.unit || '-'}</p>
-                    </div>
-
-                    <div className="bg-blue-50 p-3 rounded border border-blue-200">
-                      <span className="font-semibold text-gray-900">Price:</span>
-                      <p className="text-lg font-bold text-blue-600">₱{parseFloat(selectedProductDetails.price || 0).toFixed(2)}</p>
-                    </div>
-
-                    <div className="bg-green-50 p-3 rounded border border-green-200">
-                      <span className="font-semibold text-gray-900">Available Quantity:</span>
-                      <p className="text-2xl font-bold text-green-600">{selectedProductDetails.quantity || 0} {selectedProductDetails.unit || 'units'}</p>
-                    </div>
-
-                    {selectedProductDetails.warranty_date && (
-                      <div className="bg-gray-50 p-3 rounded">
-                        <span className="font-semibold text-gray-900">Warranty Date:</span>
-                        <p className="text-gray-700">{formatDateShort(selectedProductDetails.warranty_date)}</p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        // Handle both properly linked data (via relationships) and legacy data (direct names in fields)
-                        const categoryName = selectedProductDetails.category?.category_name || selectedProductDetails.category_id || '';
-                        const supplierName = selectedProductDetails.supplier?.supplier_name || selectedProductDetails.supplier_id || '';
-                        setCurrentItem({
-                          ...currentItem,
-                          product_name: selectedProductDetails.product_name,
-                          category_id: categoryName,
-                          supplier_id: supplierName,
-                          unit: selectedProductDetails.unit || '',
-                          price: selectedProductDetails.price || '',
-                          barcode: selectedProductDetails.barcode || '',
-                          serial_no: selectedProductDetails.serial_no || '',
-                        });
-                        setSelectedProductDetails(null);
-                        setShowProductDropdown(false);
-                        setShowCategoryDropdown(false);
-                        setShowSupplierDropdown(false);
-                      }}
-                      className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded transition"
-                    >
-                      Select Product
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedProductDetails(null)}
-                      className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-900 font-semibold py-2 px-4 rounded transition"
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Category with Dropdown */}
-          <div className="relative">
-            <label className="block text-sm font-medium text-gray-900 mb-1">
-              Category
-            </label>
-            <input
-              id="category_id"
-              type="text"
-              name="category_id"
-              value={currentItem.category_id}
-              onChange={(e) => {
-                setCurrentItem({ ...currentItem, category_id: e.target.value });
-                setShowCategoryDropdown(true);
-              }}
-              onFocus={() => setShowCategoryDropdown(true)}
-              onBlur={() => setTimeout(() => setShowCategoryDropdown(false), 200)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
-              placeholder="e.g., Security, IT Equipment, Networking"
-            />
-            {showCategoryDropdown && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto z-10">
-                {filteredCategories && filteredCategories.length > 0 ? (
-                  <>
-                    {filteredCategories.map((cat) => (
-                      <div
-                        key={cat.id}
-                        onClick={() => {
-                          setCurrentItem({
-                            ...currentItem,
-                            category_id: cat.category_name,
-                          });
-                          setShowCategoryDropdown(false);
-                        }}
-                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-900"
-                      >
-                        {cat.category_name}
-                      </div>
-                    ))}
-                    <div className="border-t border-gray-200 px-3 py-2 text-xs text-gray-500">
-                      Or type to create new
-                    </div>
-                  </>
-                ) : (
-                  <div className="px-3 py-2 text-sm text-gray-500">
-                    Type to create new category
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Supplier with Dropdown */}
-          <div className="relative">
-            <label className="block text-sm font-medium text-gray-900 mb-1">
-              Supplier
-            </label>
-            <input
-              id="supplier_id"
-              type="text"
-              name="supplier_id"
-              value={currentItem.supplier_id}
-              onChange={(e) => {
-                setCurrentItem({ ...currentItem, supplier_id: e.target.value });
-                setShowSupplierDropdown(true);
-              }}
-              onFocus={() => setShowSupplierDropdown(true)}
-              onBlur={() => setTimeout(() => setShowSupplierDropdown(false), 200)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
-              placeholder="e.g., Hikvision, Dahua, Ubiquiti"
-            />
-            {showSupplierDropdown && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto z-10">
-                {filteredSuppliers && filteredSuppliers.length > 0 ? (
-                  <>
-                    {filteredSuppliers.map((sup) => (
-                      <div
-                        key={sup.id}
-                        onClick={() => {
-                          setCurrentItem({
-                            ...currentItem,
-                            supplier_id: sup.supplier_name,
-                          });
-                          setShowSupplierDropdown(false);
-                        }}
-                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-900"
-                      >
-                        {sup.supplier_name}
-                      </div>
-                    ))}
-                    <div className="border-t border-gray-200 px-3 py-2 text-xs text-gray-500">
-                      Or type to create new
-                    </div>
-                  </>
-                ) : (
-                  <div className="px-3 py-2 text-sm text-gray-500">
-                    Type to create new supplier
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Price */}
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-1">
-              Price
-            </label>
-            <input
-              id="price"
-              type="number"
-              name="price"
-              step="0.01"
-              value={currentItem.price}
-              onChange={(e) => setCurrentItem({ ...currentItem, price: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
-              placeholder="e.g., 5000.00"
-            />
-          </div>
-
-          {/* Barcode */}
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-1">
-              Barcode
-            </label>
-            <input
-              id="barcode"
-              type="text"
-              name="barcode"
-              value={currentItem.barcode}
-              onChange={(e) => setCurrentItem({ ...currentItem, barcode: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
-              placeholder="e.g., 8936099880123"
-            />
-          </div>
-
-          {/* Unit */}
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-1">
-              Unit
-            </label>
-            <input
-              id="unit"
-              type="text"
-              name="unit"
-              value={currentItem.unit}
-              onChange={(e) => setCurrentItem({ ...currentItem, unit: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
-              placeholder="e.g., pieces, box, set"
-            />
-          </div>
-
-          {/* Serial No */}
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-1">
-              Serial No
-            </label>
-            <input
-              id="serial_no"
-              type="text"
-              name="serial_no"
-              value={currentItem.serial_no}
-              onChange={(e) => setCurrentItem({ ...currentItem, serial_no: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
-              placeholder="e.g., SN123456789"
-            />
-          </div>
-
-          {/* Warranty Date */}
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-1">
-              Warranty Date
-            </label>
-            <CalendarPicker 
-              value={currentItem.warranty_date}
-              onChange={(date) => setCurrentItem({ ...currentItem, warranty_date: date })}
-              placeholder="Select warranty date"
-            />
-          </div>
-
-          {/* Quantity and Price */}
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-1">Quantity</label>
-            <input
-              id="stock_in_quantity"
-              type="number"
-              name="stock_in_quantity"
-              min="1"
-              step="1"
-              value={currentItem.stock_in_quantity}
-              onChange={(e) => setCurrentItem({ ...currentItem, stock_in_quantity: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
-              placeholder="e.g., 10"
-            />
-          </div>
-
-          <Button
-            type="button"
-            onClick={addItem}
-            className="w-full gap-2 bg-blue-600 hover:bg-blue-700"
-          >
-            <Plus size={16} />
-            Add to Request
-          </Button>
-
-          {submitErrors.items && <p className="text-red-600 text-sm">{submitErrors.items}</p>}
-
-          {/* Items List */}
-          {items.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-gray-900 mb-2">
-                Requested Products ({items.length})
-              </label>
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <table className="w-full text-xs border-collapse">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                      <th className="px-3 py-1.5 text-left font-semibold text-gray-500">Product Name</th>
-                      <th className="px-3 py-1.5 text-center font-semibold text-gray-500 w-14">Qty</th>
-                      <th className="px-3 py-1.5 text-center font-semibold text-gray-500 w-24">Price</th>
-                      <th className="px-3 py-1.5 text-center font-semibold text-gray-500 w-24">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((item, index) => (
-                      <tr key={index} className="border-b border-gray-100 last:border-b-0 bg-white hover:bg-gray-50 transition-colors">
-                        <td className="px-3 py-2 font-medium text-gray-900 text-sm">{item.product_name || 'Product'}</td>
-                        <td className="px-3 py-2 text-center font-semibold text-gray-800">{item.stock_in_quantity}</td>
-                        <td className="px-3 py-2 text-center font-semibold text-gray-800">₱{parseFloat(item.price || 0).toFixed(2)}</td>
-                        <td className="px-3 py-2 text-center">
-                          <div className="flex items-center justify-center gap-2">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-5 flex flex-col">
+          <div className="space-y-5 flex-1">
+            {/* Product Name - Full Width */}
+            <div className="relative">
+              <label className="block text-xs text-gray-600 mb-1.5 font-medium">Product Name</label>
+              <input
+                id="product_name"
+                type="text"
+                name="product_name"
+                value={currentItem.product_name}
+                onChange={(e) => {
+                  setCurrentItem({ ...currentItem, product_name: e.target.value });
+                  setShowProductDropdown(true);
+                }}
+                onFocus={() => setShowProductDropdown(true)}
+                onBlur={() => setTimeout(() => setShowProductDropdown(false), 200)}
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                placeholder="CCTV Camera, UPS, Network Switch"
+              />
+              {showProductDropdown && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-64 overflow-y-auto z-10">
+                  {filteredProducts && filteredProducts.length > 0 ? (
+                    <>
+                      {filteredProducts.map((prod) => (
+                        <div key={prod.id} className="px-3 py-2 border-b border-gray-100">
+                          <div className="flex items-center justify-between gap-2">
+                            <div
+                              onClick={() => {
+                                const categoryName = prod.category?.category_name || prod.category_id || '';
+                                const supplierName = prod.supplier?.supplier_name || prod.supplier_id || '';
+                                setCurrentItem({
+                                  ...currentItem,
+                                  product_name: prod.product_name,
+                                  category_id: categoryName,
+                                  supplier_id: supplierName,
+                                  unit: prod.unit || '',
+                                  price: prod.price || '',
+                                  barcode: prod.barcode || '',
+                                  serial_no: prod.serial_no || '',
+                                });
+                                setShowProductDropdown(false);
+                                setShowCategoryDropdown(false);
+                                setShowSupplierDropdown(false);
+                                console.log('Auto-filled - Category:', categoryName, 'Supplier:', supplierName);
+                              }}
+                              className="flex-1 hover:bg-blue-50 cursor-pointer py-2 px-2 rounded text-sm"
+                            >
+                              <div className="font-medium text-gray-900">{prod.product_name}</div>
+                            </div>
                             <button
                               type="button"
-                              onClick={() => setDetailItem(item)}
-                              className="text-xs text-blue-600 hover:text-blue-800 font-medium px-1.5 py-0.5 bg-blue-50 rounded hover:bg-blue-100 transition"
+                              onClick={() => setSelectedProductDetails(prod)}
+                              className="text-blue-600 hover:text-blue-800 text-xs font-semibold px-2 py-1 bg-blue-50 rounded hover:bg-blue-100 transition"
                             >
                               Details
                             </button>
-                            <button
-                              type="button"
-                              onClick={() => removeItem(index)}
-                              className="text-red-500 hover:text-red-700 transition"
-                            >
-                              <Trash2 size={14} />
-                            </button>
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+                      ))}
+                      <div className="border-t border-gray-200 px-3 py-2 text-xs text-gray-500">
+                        Or type to create new
+                      </div>
+                    </>
+                  ) : (
+                    <div className="px-3 py-2 text-sm text-gray-500">
+                      Type to create new product
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Product Details Modal */}
+              {selectedProductDetails && (
+                <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4">
+                  <div className="bg-white rounded-lg w-full max-w-[560px] max-h-[90vh] flex flex-col shadow-lg">
+                    {/* HEADER */}
+                    <div className="flex items-center justify-between px-6 pt-6 pb-4 flex-shrink-0">
+                      <h3 className="text-lg font-semibold text-gray-900 break-words">{selectedProductDetails.product_name}</h3>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedProductDetails(null)}
+                        className="flex-shrink-0 ml-4 text-gray-400 hover:text-gray-600 transition"
+                        aria-label="Close modal"
+                      >
+                        <X size={24} />
+                      </button>
+                    </div>
+
+                    {/* BODY - Scrollable */}
+                    <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+                      
+                      {/* Price & Quantity Summary Row */}
+                      <div className="flex items-center justify-between py-3 border-b border-gray-200">
+                        <div>
+                          <span className="text-xs text-gray-600">Price</span>
+                          <p className="text-sm font-semibold text-gray-900">₱{parseFloat(selectedProductDetails.price || 0).toFixed(2)}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs text-gray-600">Available Quantity</span>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {selectedProductDetails.quantity ? 
+                              (selectedProductDetails.quantity % 1 === 0 ? 
+                                `${selectedProductDetails.quantity} ${selectedProductDetails.unit || 'pcs'}` 
+                                : `${parseFloat(selectedProductDetails.quantity).toFixed(2)} ${selectedProductDetails.unit || 'pcs'}`)
+                              : `0 ${selectedProductDetails.unit || 'pcs'}`}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Category | Unit - Two Columns */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div>
+                          <span className="text-xs text-gray-600">Category</span>
+                          <p className="text-sm text-gray-900 break-words">
+                            {selectedProductDetails.category?.category_name || selectedProductDetails.category_id || '-'}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-xs text-gray-600">Unit</span>
+                          <p className="text-sm text-gray-900 break-words">
+                            {selectedProductDetails.unit || '-'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Supplier - Full Width */}
+                      <div>
+                        <span className="text-xs text-gray-600">Supplier</span>
+                        <p className="text-sm text-gray-900 break-words">
+                          {selectedProductDetails.supplier?.supplier_name || selectedProductDetails.supplier_id || '-'}
+                        </p>
+                      </div>
+
+                      {/* Barcode | Serial No - Two Columns */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div>
+                          <span className="text-xs text-gray-600">Barcode</span>
+                          <p className="text-sm text-gray-900 font-mono break-words">
+                            {selectedProductDetails.barcode || '-'}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-xs text-gray-600">Serial No</span>
+                          <p className="text-sm text-gray-900 font-mono break-words">
+                            {selectedProductDetails.serial_no || '-'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Warranty Date - Full Width if present */}
+                      {selectedProductDetails.warranty_date && (
+                        <div>
+                          <span className="text-xs text-gray-600">Warranty Date</span>
+                          <p className="text-sm text-gray-900">
+                            {formatDateShort(selectedProductDetails.warranty_date)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* FOOTER - Fixed */}
+                    <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-3 flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedProductDetails(null)}
+                        className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 rounded transition"
+                      >
+                        Close
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const categoryName = selectedProductDetails.category?.category_name || selectedProductDetails.category_id || '';
+                          const supplierName = selectedProductDetails.supplier?.supplier_name || selectedProductDetails.supplier_id || '';
+                          setCurrentItem({
+                            ...currentItem,
+                            product_name: selectedProductDetails.product_name,
+                            category_id: categoryName,
+                            supplier_id: supplierName,
+                            unit: selectedProductDetails.unit || '',
+                            price: selectedProductDetails.price || '',
+                            barcode: selectedProductDetails.barcode || '',
+                            serial_no: selectedProductDetails.serial_no || '',
+                          });
+                          setSelectedProductDetails(null);
+                          setShowProductDropdown(false);
+                          setShowCategoryDropdown(false);
+                          setShowSupplierDropdown(false);
+                        }}
+                        className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded transition"
+                      >
+                        Select Product
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Category | Supplier - Two Columns */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="relative">
+                <label className="block text-xs text-gray-600 mb-1.5 font-medium">Category</label>
+                <input
+                  id="category_id"
+                  type="text"
+                  name="category_id"
+                  value={currentItem.category_id}
+                  onChange={(e) => {
+                    setCurrentItem({ ...currentItem, category_id: e.target.value });
+                    setShowCategoryDropdown(true);
+                  }}
+                  onFocus={() => setShowCategoryDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowCategoryDropdown(false), 200)}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                  placeholder="Security, IT Equipment"
+                />
+                {showCategoryDropdown && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto z-10">
+                    {filteredCategories && filteredCategories.length > 0 ? (
+                      <>
+                        {filteredCategories.map((cat) => (
+                          <div
+                            key={cat.id}
+                            onClick={() => {
+                              setCurrentItem({
+                                ...currentItem,
+                                category_id: cat.category_name,
+                              });
+                              setShowCategoryDropdown(false);
+                            }}
+                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-900"
+                          >
+                            {cat.category_name}
+                          </div>
+                        ))}
+                        <div className="border-t border-gray-200 px-3 py-2 text-xs text-gray-500">
+                          Or type to create new
+                        </div>
+                      </>
+                    ) : (
+                      <div className="px-3 py-2 text-sm text-gray-500">
+                        Type to create new category
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="relative">
+                <label className="block text-xs text-gray-600 mb-1.5 font-medium">Supplier</label>
+                <input
+                  id="supplier_id"
+                  type="text"
+                  name="supplier_id"
+                  value={currentItem.supplier_id}
+                  onChange={(e) => {
+                    setCurrentItem({ ...currentItem, supplier_id: e.target.value });
+                    setShowSupplierDropdown(true);
+                  }}
+                  onFocus={() => setShowSupplierDropdown(true)}
+                  onBlur={() => setTimeout(() => setShowSupplierDropdown(false), 200)}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                  placeholder="Hikvision, Dahua"
+                />
+                {showSupplierDropdown && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-48 overflow-y-auto z-10">
+                    {filteredSuppliers && filteredSuppliers.length > 0 ? (
+                      <>
+                        {filteredSuppliers.map((sup) => (
+                          <div
+                            key={sup.id}
+                            onClick={() => {
+                              setCurrentItem({
+                                ...currentItem,
+                                supplier_id: sup.supplier_name,
+                              });
+                              setShowSupplierDropdown(false);
+                            }}
+                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm text-gray-900"
+                          >
+                            {sup.supplier_name}
+                          </div>
+                        ))}
+                        <div className="border-t border-gray-200 px-3 py-2 text-xs text-gray-500">
+                          Or type to create new
+                        </div>
+                      </>
+                    ) : (
+                      <div className="px-3 py-2 text-sm text-gray-500">
+                        Type to create new supplier
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
-          )}
+
+            {/* Price | Unit - Two Columns */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs text-gray-600 mb-1.5 font-medium">Price</label>
+                <input
+                  id="price"
+                  type="number"
+                  name="price"
+                  step="0.01"
+                  value={currentItem.price}
+                  onChange={(e) => setCurrentItem({ ...currentItem, price: e.target.value })}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                  placeholder="5000.00"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-600 mb-1.5 font-medium">Unit</label>
+                <input
+                  id="unit"
+                  type="text"
+                  name="unit"
+                  value={currentItem.unit}
+                  onChange={(e) => setCurrentItem({ ...currentItem, unit: e.target.value })}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                  placeholder="pcs, box, set"
+                />
+              </div>
+            </div>
+
+            {/* Barcode | Serial No - Two Columns */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs text-gray-600 mb-1.5 font-medium">Barcode</label>
+                <input
+                  id="barcode"
+                  type="text"
+                  name="barcode"
+                  value={currentItem.barcode}
+                  onChange={(e) => setCurrentItem({ ...currentItem, barcode: e.target.value })}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                  placeholder="8936099880123"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-600 mb-1.5 font-medium">Serial No</label>
+                <input
+                  id="serial_no"
+                  type="text"
+                  name="serial_no"
+                  value={currentItem.serial_no}
+                  onChange={(e) => setCurrentItem({ ...currentItem, serial_no: e.target.value })}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                  placeholder="SN123456789"
+                />
+              </div>
+            </div>
+
+            {/* Warranty Date | Quantity - Two Columns */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs text-gray-600 mb-1.5 font-medium">Warranty Date</label>
+                <CalendarPicker 
+                  value={currentItem.warranty_date}
+                  onChange={(date) => setCurrentItem({ ...currentItem, warranty_date: date })}
+                  placeholder="Select date"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-600 mb-1.5 font-medium">Quantity</label>
+                <input
+                  id="stock_in_quantity"
+                  type="number"
+                  name="stock_in_quantity"
+                  min="1"
+                  step="1"
+                  value={currentItem.stock_in_quantity}
+                  onChange={(e) => setCurrentItem({ ...currentItem, stock_in_quantity: e.target.value })}
+                  className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                  placeholder="10"
+                />
+              </div>
+            </div>
+
+            {/* Add to Request Button */}
+            <Button
+              type="button"
+              onClick={addItem}
+              variant="outline"
+              className="w-full gap-2 border border-gray-300 text-gray-700 hover:bg-gray-50 h-10"
+            >
+              <Plus size={16} />
+              Add to Request
+            </Button>
+
+            {submitErrors.items && <p className="text-red-600 text-sm">{submitErrors.items}</p>}
+
+            {/* Items List */}
+            {items.length > 0 && (
+              <div className="pt-4 border-t border-gray-200">
+                <label className="block text-sm font-medium text-gray-900 mb-3">
+                  Requested Products ({items.length})
+                </label>
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-semibold text-gray-600">Product Name</th>
+                        <th className="px-3 py-2 text-center font-semibold text-gray-600 w-14">Qty</th>
+                        <th className="px-3 py-2 text-center font-semibold text-gray-600 w-24">Price</th>
+                        <th className="px-3 py-2 text-center font-semibold text-gray-600 w-20">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((item, index) => (
+                        <tr key={index} className="border-b border-gray-100 last:border-b-0 bg-white hover:bg-gray-50 transition-colors">
+                          <td className="px-3 py-2 font-medium text-gray-900">{item.product_name || 'Product'}</td>
+                          <td className="px-3 py-2 text-center font-semibold text-gray-800">{item.stock_in_quantity}</td>
+                          <td className="px-3 py-2 text-center font-semibold text-gray-800">₱{parseFloat(item.price || 0).toFixed(2)}</td>
+                          <td className="px-3 py-2 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setDetailItem(item)}
+                                className="text-xs text-blue-600 hover:text-blue-800 font-medium px-2 py-1 bg-blue-50 rounded hover:bg-blue-100 transition"
+                              >
+                                View
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => removeItem(index)}
+                                className="text-red-500 hover:text-red-700 transition p-1"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Item Detail Modal */}
           {detailItem && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-white/30">
-              <div className="bg-white rounded-xl shadow-2xl p-5 w-full max-w-sm mx-4">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+              <div className="bg-white rounded-lg shadow-lg p-5 w-full max-w-sm mx-4">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-bold text-gray-900">{detailItem.product_name || 'Product'}</h3>
-                  <button onClick={() => setDetailItem(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+                  <button onClick={() => setDetailItem(null)} className="text-gray-400 hover:text-gray-600">
+                    <X size={20} />
+                  </button>
                 </div>
-                <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="grid grid-cols-2 gap-3 text-xs mb-4">
                   <div><p className="text-gray-500">Category</p><p className="font-medium text-gray-900">{detailItem.category_id || '-'}</p></div>
                   <div><p className="text-gray-500">Supplier</p><p className="font-medium text-gray-900">{detailItem.supplier_id || '-'}</p></div>
                   <div><p className="text-gray-500">Price</p><p className="font-medium text-gray-900">₱{parseFloat(detailItem.price || 0).toFixed(2)}</p></div>
@@ -827,21 +852,22 @@ export default function StockIn({ stockIns, products, categories, suppliers }) {
                     <p className="text-gray-500">Qty</p><p className="font-semibold text-gray-900">{detailItem.stock_in_quantity}</p>
                   </div>
                 </div>
-                <button onClick={() => setDetailItem(null)} className="mt-4 w-full py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition">Close</button>
+                <button onClick={() => setDetailItem(null)} className="w-full py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition">Close</button>
               </div>
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-900 mb-1">Remarks</label>
+          {/* Remarks Section - Separated with divider */}
+          <div className="pt-4 border-t border-gray-200">
+            <label className="block text-xs text-gray-600 mb-2.5 font-medium">Remarks</label>
             <textarea
               id="remarks"
               name="remarks"
               value={formData.remarks}
               onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition resize-none"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition resize-none"
               placeholder="Enter remarks (optional)"
-              rows="2"
+              rows="3"
             />
           </div>
 
@@ -888,83 +914,77 @@ export default function StockIn({ stockIns, products, categories, suppliers }) {
 
   const renderTable = (filteredStockIns) => (
     <div className="border border-gray-200 rounded-lg overflow-hidden">
-      <table className="w-full table-fixed">
+      <table className="w-full">
         <thead className="bg-gray-50 border-b border-gray-200">
           <tr>
-            <th className="w-12 px-2 py-3 text-left text-xs font-semibold text-gray-900">ID</th>
-            <th className="w-24 px-2 py-3 text-left text-xs font-semibold text-gray-900">Requested By</th>
-            <th className="w-48 px-2 py-3 text-left text-xs font-semibold text-gray-900">Products</th>
-            <th className="w-32 px-2 py-3 text-left text-xs font-semibold text-gray-900">Remarks</th>
-            <th className="w-20 px-2 py-3 text-left text-xs font-semibold text-gray-900">Status</th>
-            <th className="w-32 px-2 py-3 text-left text-xs font-semibold text-gray-900">Created At</th>
-            <th className="w-32 px-2 py-3 text-center text-xs font-semibold text-gray-900">Action</th>
+            <th className="hidden sm:table-cell px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider min-w-[70px]">Request ID</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider min-w-[120px]">Requested By</th>
+            <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider min-w-[200px]">Products</th>
+            <th className="hidden lg:table-cell px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider min-w-[140px]">Remarks</th>
+            <th className="hidden md:table-cell px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider min-w-[130px]">Requested At</th>
+            <th className="px-4 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider min-w-[110px]">Actions</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-200">
+        <tbody className="divide-y divide-gray-100">
           {filteredStockIns && filteredStockIns.length > 0 ? (
             filteredStockIns.map((item, idx) => (
               <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                <td className="px-2 py-2 text-xs font-medium text-gray-900">{item.id}</td>
-                <td className="px-2 py-2 text-xs text-gray-700">
+                <td className="hidden sm:table-cell px-4 py-4 text-sm font-medium text-gray-900">{item.id}</td>
+                <td className="px-4 py-4 text-sm text-gray-700">
                   <div className="truncate" title={item.user?.name}>{item.user?.name || '-'}</div>
                 </td>
-                <td className="px-2 py-2 text-xs text-gray-700">
+                <td className="hidden md:table-cell px-4 py-4 text-sm text-gray-700">
                   {item.items && item.items.length > 0 ? (
-                    <div className="truncate" title={item.items.map(stockItem => `${stockItem.product_name || stockItem.product?.product_name || 'Custom Product'} (${stockItem.stock_in_quantity})`).join(', ')}>
+                    <div className="space-y-1">
                       {item.items.map((stockItem, i) => (
-                        <span key={i}>
-                          {i > 0 && ', '}
-                          {stockItem.product_name || stockItem.product?.product_name || 'Custom Product'} ({stockItem.stock_in_quantity})
-                        </span>
+                        <div key={i} className="text-sm text-gray-700">
+                          <span className="text-gray-900 font-medium">{stockItem.product_name || stockItem.product?.product_name || 'Custom Product'}</span>
+                          <span className="text-gray-600"> · Qty: {stockItem.stock_in_quantity}</span>
+                        </div>
                       ))}
                     </div>
                   ) : (
                     '-'
                   )}
                 </td>
-                <td className="px-2 py-2 text-xs text-gray-700">
-                  <div className="truncate" title={item.remarks}>{item.remarks || '-'}</div>
+                <td className="hidden lg:table-cell px-4 py-4 text-sm text-gray-700">
+                  <div className="line-clamp-2 text-gray-700" title={item.remarks}>{item.remarks || '-'}</div>
                 </td>
-                <td className="px-2 py-2 text-xs">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(item.status)}`}>
-                    {item.status}
-                  </span>
+                <td className="hidden md:table-cell px-4 py-4 text-sm text-gray-700 whitespace-nowrap">
+                  <div className="font-medium">{formatDateTimeSingleLine(item.created_at)}</div>
                 </td>
-                <td className="px-2 py-2 text-xs text-gray-700 whitespace-nowrap">
-                  {formatDateTimeSingleLine(item.created_at)}
-                </td>
-                <td className="px-6 py-4 text-sm text-center">
+                <td className="px-4 py-4 text-sm text-center">
                   <div className="flex items-center gap-2 justify-center">
                     <button
                       onClick={() => setSelectedStockInDetails(item)}
-                      className="text-blue-600 hover:text-blue-800 text-xs font-semibold px-3 py-1 bg-blue-50 rounded hover:bg-blue-100 transition"
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-blue-600 hover:text-blue-800 px-2.5 py-2 hover:bg-blue-50 rounded transition"
                     >
-                      Details
+                      <span>Details</span>
                     </button>
                     {isAdmin && item.status === 'pending' ? (
                       <>
                         <button
                           onClick={() => handleApprove(item.id)}
-                          className="text-green-600 hover:text-green-800 transition-colors p-1"
+                          className="text-green-600 hover:text-green-800 transition-colors p-2"
                           title="Approve"
                         >
-                          <Check size={18} />
+                          <Check size={16} />
                         </button>
                         <button
                           onClick={() => handleReject(item.id)}
-                          className="text-red-600 hover:text-red-800 transition-colors p-1"
+                          className="text-red-600 hover:text-red-800 transition-colors p-2"
                           title="Reject"
                         >
-                          <XCircle size={18} />
+                          <XCircle size={16} />
                         </button>
                       </>
                     ) : item.user?.id === auth.user?.id && item.status === 'pending' ? (
                       <button
                         onClick={() => handleDelete(item.id)}
-                        className="text-red-600 hover:text-red-800 transition-colors p-1"
+                        className="text-red-600 hover:text-red-800 transition-colors p-2"
                         title="Delete"
                       >
-                        <Trash2 size={18} />
+                        <Trash2 size={16} />
                       </button>
                     ) : null}
                   </div>
@@ -973,8 +993,15 @@ export default function StockIn({ stockIns, products, categories, suppliers }) {
             ))
           ) : (
             <tr>
-              <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
-                No stock in requests found
+              <td colSpan="6" className="px-4 py-12 text-center">
+                <div className="flex flex-col items-center justify-center">
+                  <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-semibold text-gray-900">No stock in requests found</p>
+                </div>
               </td>
             </tr>
           )}
@@ -1023,12 +1050,8 @@ export default function StockIn({ stockIns, products, categories, suppliers }) {
       
       <div className="p-8 bg-white min-h-screen">
         <div className="max-w-6xl mx-auto">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Stock In</h1>
-              <p className="text-gray-600 text-sm mt-1">Manage incoming stock requests</p>
-            </div>
+          {/* Toolbar */}
+          <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               {renderRequestDialog()}
             </div>
@@ -1036,44 +1059,53 @@ export default function StockIn({ stockIns, products, categories, suppliers }) {
 
           {/* Tabs - Only show for Admin */}
           {isAdmin && (
-            <div className="mb-6 border-b border-gray-200">
-              <div className="flex gap-4">
+            <div className="mb-5 border-b border-gray-200">
+              <div className="flex gap-8">
                 <button
                   onClick={() => setActiveTab('pending')}
-                  className={`px-4 py-2 font-medium transition-colors ${
+                  className={`pb-3 text-sm transition-colors border-b-2 ${
                     activeTab === 'pending'
-                      ? 'border-b-2 border-red-600 text-red-600'
-                      : 'text-gray-600 hover:text-gray-900'
+                      ? 'border-red-600 text-gray-900 font-medium'
+                      : 'border-transparent text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  Pending Requests ({pendingRequests.length})
+                  Pending Requests
+                  <span className={`ml-2 text-xs font-normal ${activeTab === 'pending' ? 'text-gray-600' : 'text-gray-500'}`}>
+                    ({pendingRequests.length})
+                  </span>
                 </button>
                 <button
                   onClick={() => setActiveTab('approved')}
-                  className={`px-4 py-2 font-medium transition-colors ${
+                  className={`pb-3 text-sm transition-colors border-b-2 ${
                     activeTab === 'approved'
-                      ? 'border-b-2 border-red-600 text-red-600'
-                      : 'text-gray-600 hover:text-gray-900'
+                      ? 'border-red-600 text-gray-900 font-medium'
+                      : 'border-transparent text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  Approved ({approvedRequests.length})
+                  Approved
+                  <span className={`ml-2 text-xs font-normal ${activeTab === 'approved' ? 'text-gray-600' : 'text-gray-500'}`}>
+                    ({approvedRequests.length})
+                  </span>
                 </button>
                 <button
                   onClick={() => setActiveTab('rejected')}
-                  className={`px-4 py-2 font-medium transition-colors ${
+                  className={`pb-3 text-sm transition-colors border-b-2 ${
                     activeTab === 'rejected'
-                      ? 'border-b-2 border-red-600 text-red-600'
-                      : 'text-gray-600 hover:text-gray-900'
+                      ? 'border-red-600 text-gray-900 font-medium'
+                      : 'border-transparent text-gray-600 hover:text-gray-900'
                   }`}
                 >
-                  Rejected ({rejectedRequests.length})
+                  Rejected
+                  <span className={`ml-2 text-xs font-normal ${activeTab === 'rejected' ? 'text-gray-600' : 'text-gray-500'}`}>
+                    ({rejectedRequests.length})
+                  </span>
                 </button>
               </div>
             </div>
           )}
 
           {/* Content Section */}
-          <div className="space-y-6">
+          <div>
 
             {/* Table Section - Show based on admin and tab */}
             {isAdmin ? (
@@ -1090,138 +1122,103 @@ export default function StockIn({ stockIns, products, categories, suppliers }) {
         </div>
       </div>
 
-      {/* Stock In Details Modal - Enterprise UI Design */}
+      {/* Stock In Details Modal */}
       {selectedStockInDetails && (
-        <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-[720px] max-h-[90vh] flex flex-col">
             {/* FIXED HEADER */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 flex-shrink-0">
               <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between">
-                  <div className="min-w-0">
-                    <h2 className="text-lg font-semibold text-gray-900 truncate">
-                      Stock In Request
-                    </h2>
-                    <p className="text-sm text-gray-600 mt-0.5">
-                      #{selectedStockInDetails.id.toString().padStart(5, '0')} · Created {formatDateShort(selectedStockInDetails.created_at)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3 ml-4">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${
-                        selectedStockInDetails.status === 'approved' ? 'bg-green-500' :
-                        selectedStockInDetails.status === 'pending' ? 'bg-yellow-500' :
-                        selectedStockInDetails.status === 'rejected' ? 'bg-red-500' :
-                        'bg-gray-400'
-                      }`} />
-                      <span className={`text-sm font-medium capitalize ${
-                        selectedStockInDetails.status === 'approved' ? 'text-green-700' :
-                        selectedStockInDetails.status === 'pending' ? 'text-yellow-700' :
-                        selectedStockInDetails.status === 'rejected' ? 'text-red-700' :
-                        'text-gray-700'
-                      }`}>
-                        {selectedStockInDetails.status}
-                      </span>
-                    </div>
-                  </div>
+                <h2 className="text-lg font-semibold text-gray-900">Stock In Request</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Request #{selectedStockInDetails.id.toString().padStart(5, '0')}
+                </p>
+              </div>
+              <div className="flex items-center gap-3 ml-6">
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    selectedStockInDetails.status === 'approved' ? 'bg-green-500' :
+                    selectedStockInDetails.status === 'pending' ? 'bg-yellow-500' :
+                    selectedStockInDetails.status === 'rejected' ? 'bg-red-500' :
+                    'bg-gray-400'
+                  }`} />
+                  <span className={`text-xs font-semibold capitalize px-2 py-1 rounded ${
+                    selectedStockInDetails.status === 'approved' ? 'bg-green-100 text-green-700' :
+                    selectedStockInDetails.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                    selectedStockInDetails.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {selectedStockInDetails.status}
+                  </span>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedStockInDetails(null)}
-                className="flex-shrink-0 ml-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="flex-shrink-0 ml-4 text-gray-400 hover:text-gray-600 transition"
                 aria-label="Close modal"
               >
-                <X size={18} />
+                <X size={24} />
               </button>
             </div>
 
             {/* SCROLLABLE BODY */}
-            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
               
-              {/* REQUEST INFORMATION */}
-              <div>
-                <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4 pb-2 border-b border-gray-100">
-                  Request Information
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                  <div>
-                    <dt className="text-sm text-gray-600 mb-1">Requested By</dt>
-                    <dd className="text-base font-medium text-gray-900">
-                      {selectedStockInDetails.user?.name || 'Not specified'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-sm text-gray-600 mb-1">Status</dt>
-                    <dd>
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${
-                          selectedStockInDetails.status === 'approved' ? 'bg-green-500' :
-                          selectedStockInDetails.status === 'pending' ? 'bg-yellow-500' :
-                          selectedStockInDetails.status === 'rejected' ? 'bg-red-500' :
-                          'bg-gray-400'
-                        }`} />
-                        <span className={`text-base font-medium capitalize ${
-                          selectedStockInDetails.status === 'approved' ? 'text-green-700' :
-                          selectedStockInDetails.status === 'pending' ? 'text-yellow-700' :
-                          selectedStockInDetails.status === 'rejected' ? 'text-red-700' :
-                          'text-gray-700'
-                        }`}>
-                          {selectedStockInDetails.status}
-                        </span>
-                      </div>
-                    </dd>
-                  </div>
-                  <div className="md:col-span-2">
-                    <dt className="text-sm text-gray-600 mb-1">Created At</dt>
-                    <dd className="text-base font-medium text-gray-900">
-                      {formatDatePhilippines(selectedStockInDetails.created_at)}
-                    </dd>
-                  </div>
-                  {selectedStockInDetails.remarks && (
-                    <div className="md:col-span-2">
-                      <dt className="text-sm text-gray-600 mb-1">Remarks</dt>
-                      <dd className="text-base text-gray-900">
-                        {selectedStockInDetails.remarks}
-                      </dd>
-                    </div>
-                  )}
+              {/* REQUEST INFORMATION - Simplified */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                  <span className="text-xs text-gray-600">Requested By</span>
+                  <p className="text-sm font-medium text-gray-900">
+                    {selectedStockInDetails.user?.name || 'Not specified'}
+                  </p>
                 </div>
+                <div>
+                  <span className="text-xs text-gray-600">Created At</span>
+                  <p className="text-sm font-medium text-gray-900">
+                    {formatDatePhilippines(selectedStockInDetails.created_at)}
+                  </p>
+                </div>
+                {selectedStockInDetails.remarks && (
+                  <div className="sm:col-span-2">
+                    <span className="text-xs text-gray-600">Remarks</span>
+                    <p className="text-sm text-gray-900 break-words">
+                      {selectedStockInDetails.remarks}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* APPROVAL INFORMATION */}
               {(selectedStockInDetails.status !== 'pending' && (selectedStockInDetails.approved_by || selectedStockInDetails.rejection_reason)) && (
-                <div>
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4 pb-2 border-b border-gray-100">
-                    Approval Information
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                <div className="pt-4 border-t border-gray-200">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     {selectedStockInDetails.approved_by && (
                       <div>
-                        <dt className="text-sm text-gray-600 mb-1">
+                        <span className="text-xs text-gray-600">
                           {selectedStockInDetails.status === 'approved' ? 'Approved By' : 'Processed By'}
-                        </dt>
-                        <dd className="text-base font-medium text-gray-900">
+                        </span>
+                        <p className="text-sm font-medium text-gray-900">
                           {selectedStockInDetails.approved_by.name}
-                        </dd>
+                        </p>
                       </div>
                     )}
                     {selectedStockInDetails.approved_at && (
                       <div>
-                        <dt className="text-sm text-gray-600 mb-1">
+                        <span className="text-xs text-gray-600">
                           {selectedStockInDetails.status === 'approved' ? 'Approved At' : 'Processed At'}
-                        </dt>
-                        <dd className="text-base font-medium text-gray-900">
+                        </span>
+                        <p className="text-sm font-medium text-gray-900">
                           {formatDatePhilippines(selectedStockInDetails.approved_at)}
-                        </dd>
+                        </p>
                       </div>
                     )}
                     {selectedStockInDetails.status === 'rejected' && selectedStockInDetails.rejection_reason && (
-                      <div className="md:col-span-2">
-                        <dt className="text-sm text-red-600 mb-1">Rejection Reason</dt>
-                        <dd className="text-base text-red-800 bg-red-50 border border-red-200 rounded-lg p-3">
+                      <div className="sm:col-span-2">
+                        <span className="text-xs text-red-600">Rejection Reason</span>
+                        <p className="text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg p-3 mt-1">
                           {selectedStockInDetails.rejection_reason}
-                        </dd>
+                        </p>
                       </div>
                     )}
                   </div>
@@ -1229,84 +1226,62 @@ export default function StockIn({ stockIns, products, categories, suppliers }) {
               )}
 
               {/* PRODUCTS */}
-              <div>
-                <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-100">
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Products
-                  </h3>
-                  <span className="text-sm font-medium text-gray-700">
+              <div className="pt-4 border-t border-gray-200">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-gray-900">Products</h3>
+                  <span className="text-xs text-gray-600">
                     {selectedStockInDetails.items?.length || 0} {(selectedStockInDetails.items?.length || 0) === 1 ? 'item' : 'items'}
                   </span>
                 </div>
                 
                 {selectedStockInDetails.items && selectedStockInDetails.items.length > 0 ? (
-                  <div className="space-y-0">
+                  <div className="space-y-0 overflow-x-auto">
                     {/* Desktop table view */}
                     <div className="hidden md:block border border-gray-200 rounded-lg overflow-hidden">
-                      <table className="w-full">
+                      <table className="w-full text-sm">
                         <thead className="bg-gray-50 border-b border-gray-200">
                           <tr>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                              Product
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                              Category
-                            </th>
-                            <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                              Supplier
-                            </th>
-                            <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                              Quantity
-                            </th>
-                            <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                              Unit Price
-                            </th>
-                            <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                              Total
-                            </th>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-700">Product</th>
+                            <th className="px-4 py-3 text-left font-semibold text-gray-700">Supplier</th>
+                            <th className="px-4 py-3 text-right font-semibold text-gray-700">Quantity</th>
+                            <th className="px-4 py-3 text-right font-semibold text-gray-700">Unit Price</th>
+                            <th className="px-4 py-3 text-right font-semibold text-gray-700">Total</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200 bg-white">
                           {selectedStockInDetails.items.map((stockItem, idx) => (
                             <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                              <td className="px-6 py-4">
+                              <td className="px-4 py-3">
                                 <div>
-                                  <div className="text-sm font-medium text-gray-900">
+                                  <div className="text-sm font-medium text-gray-900 break-words">
                                     {stockItem.product_name || stockItem.product?.product_name || 'Unknown Product'}
                                   </div>
-                                  {stockItem.barcode && (
-                                    <div className="text-xs text-gray-500">
-                                      Barcode: {stockItem.barcode}
-                                    </div>
-                                  )}
-                                  {stockItem.serial_no && (
-                                    <div className="text-xs text-gray-500">
-                                      SN: {stockItem.serial_no}
+                                  <div className="text-xs text-gray-600 mt-1">
+                                    {stockItem.category_id && <div>Category: {stockItem.category_id}</div>}
+                                  </div>
+                                  {(stockItem.barcode || stockItem.serial_no) && (
+                                    <div className="text-xs text-gray-500 mt-1 space-y-0.5">
+                                      {stockItem.barcode && <div>Barcode: {stockItem.barcode}</div>}
+                                      {stockItem.serial_no && <div>SN: {stockItem.serial_no}</div>}
                                     </div>
                                   )}
                                 </div>
                               </td>
-                              <td className="px-6 py-4 text-sm text-gray-700">
-                                {stockItem.category_id || '-'}
-                              </td>
-                              <td className="px-6 py-4 text-sm text-gray-700">
+                              <td className="px-4 py-3 text-sm text-gray-700 break-words">
                                 {stockItem.supplier_id || '-'}
                               </td>
-                              <td className="px-6 py-4 text-right">
-                                <span className="text-lg font-semibold text-gray-900">
-                                  {stockItem.stock_in_quantity}
-                                </span>
-                                <span className="text-sm text-gray-600 ml-1">
-                                  {stockItem.unit || 'pcs'}
+                              <td className="px-4 py-3 text-right">
+                                <span className="text-sm font-medium text-gray-900">
+                                  {stockItem.stock_in_quantity} {stockItem.unit || 'pcs'}
                                 </span>
                               </td>
-                              <td className="px-6 py-4 text-right">
-                                <span className="text-sm font-medium text-gray-900">
+                              <td className="px-4 py-3 text-right">
+                                <span className="text-sm text-gray-900">
                                   ₱{parseFloat(stockItem.unit_price || 0).toFixed(2)}
                                 </span>
                               </td>
-                              <td className="px-6 py-4 text-right">
-                                <span className="text-lg font-semibold text-green-600">
+                              <td className="px-4 py-3 text-right">
+                                <span className="text-sm font-medium text-gray-900">
                                   ₱{(parseFloat(stockItem.unit_price || 0) * parseFloat(stockItem.stock_in_quantity || 0)).toFixed(2)}
                                 </span>
                               </td>
@@ -1319,91 +1294,69 @@ export default function StockIn({ stockIns, products, categories, suppliers }) {
                     {/* Mobile card view */}
                     <div className="md:hidden space-y-3">
                       {selectedStockInDetails.items.map((stockItem, idx) => (
-                        <div key={idx} className="border border-gray-200 rounded-lg p-4 bg-white">
-                          <div className="flex items-start justify-between mb-3">
+                        <div key={idx} className="border border-gray-200 rounded-lg p-3 bg-white">
+                          <div className="flex items-start justify-between mb-2">
                             <div className="min-w-0 flex-1">
-                              <h4 className="text-sm font-medium text-gray-900 truncate">
+                              <h4 className="text-sm font-medium text-gray-900 break-words">
                                 {stockItem.product_name || stockItem.product?.product_name || 'Unknown Product'}
                               </h4>
-                              {stockItem.barcode && (
-                                <p className="text-xs text-gray-500 mt-1">
-                                  Barcode: {stockItem.barcode}
-                                </p>
+                              {stockItem.category_id && (
+                                <p className="text-xs text-gray-600 mt-1">Category: {stockItem.category_id}</p>
                               )}
-                              {stockItem.serial_no && (
-                                <p className="text-xs text-gray-500">
-                                  SN: {stockItem.serial_no}
-                                </p>
+                              {(stockItem.barcode || stockItem.serial_no) && (
+                                <div className="text-xs text-gray-500 mt-1 space-y-0.5">
+                                  {stockItem.barcode && <div>Barcode: {stockItem.barcode}</div>}
+                                  {stockItem.serial_no && <div>SN: {stockItem.serial_no}</div>}
+                                </div>
                               )}
-                            </div>
-                            <div className="text-right ml-4">
-                              <div className="text-lg font-semibold text-green-600">
-                                ₱{(parseFloat(stockItem.unit_price || 0) * parseFloat(stockItem.stock_in_quantity || 0)).toFixed(2)}
-                              </div>
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div className="grid grid-cols-2 gap-3 text-xs mt-3 pt-3 border-t border-gray-100">
                             <div>
-                              <dt className="text-gray-600">Category</dt>
-                              <dd className="font-medium text-gray-900">
-                                {stockItem.category_id || '-'}
-                              </dd>
+                              <span className="text-gray-600">Supplier</span>
+                              <p className="font-medium text-gray-900 break-words">{stockItem.supplier_id || '-'}</p>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-gray-600">Quantity</span>
+                              <p className="font-medium text-gray-900">{stockItem.stock_in_quantity} {stockItem.unit || 'pcs'}</p>
                             </div>
                             <div>
-                              <dt className="text-gray-600">Supplier</dt>
-                              <dd className="font-medium text-gray-900">
-                                {stockItem.supplier_id || '-'}
-                              </dd>
+                              <span className="text-gray-600">Unit Price</span>
+                              <p className="font-medium text-gray-900">₱{parseFloat(stockItem.unit_price || 0).toFixed(2)}</p>
                             </div>
-                            <div>
-                              <dt className="text-gray-600">Quantity</dt>
-                              <dd className="font-semibold text-gray-900">
-                                {stockItem.stock_in_quantity} {stockItem.unit || 'pcs'}
-                              </dd>
+                            <div className="text-right">
+                              <span className="text-gray-600">Total</span>
+                              <p className="font-semibold text-gray-900">
+                                ₱{(parseFloat(stockItem.unit_price || 0) * parseFloat(stockItem.stock_in_quantity || 0)).toFixed(2)}
+                              </p>
                             </div>
-                            <div>
-                              <dt className="text-gray-600">Unit Price</dt>
-                              <dd className="font-medium text-gray-900">
-                                ₱{parseFloat(stockItem.unit_price || 0).toFixed(2)}
-                              </dd>
-                            </div>
-                            {stockItem.warranty_date && (
-                              <div className="col-span-2">
-                                <dt className="text-gray-600">Warranty Date</dt>
-                                <dd className="font-medium text-gray-900">
-                                  {formatDateShort(stockItem.warranty_date)}
-                                </dd>
-                              </div>
-                            )}
                           </div>
                         </div>
                       ))}
                     </div>
 
-                    {/* Total Summary */}
-                    <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                      <div className="flex items-center justify-between">
-                        <span className="text-lg font-semibold text-gray-900">Grand Total:</span>
-                        <span className="text-2xl font-bold text-green-600">
-                          ₱{selectedStockInDetails.items.reduce((sum, item) => sum + (parseFloat(item.unit_price || 0) * parseFloat(item.stock_in_quantity || 0)), 0).toFixed(2)}
-                        </span>
-                      </div>
+                    {/* Total Summary - Compact, right-aligned */}
+                    <div className="mt-4 pt-4 border-t border-gray-200 flex items-center justify-end gap-6">
+                      <span className="text-sm font-semibold text-gray-700">Grand Total:</span>
+                      <span className="text-lg font-bold text-gray-900">
+                        ₱{selectedStockInDetails.items.reduce((sum, item) => sum + (parseFloat(item.unit_price || 0) * parseFloat(item.stock_in_quantity || 0)), 0).toFixed(2)}
+                      </span>
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <p>No products found in this request</p>
+                  <div className="text-center py-6 text-gray-500 text-sm">
+                    No products found in this request
                   </div>
                 )}
               </div>
             </div>
 
             {/* FIXED FOOTER */}
-            <div className="flex items-center justify-end gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200 flex-shrink-0">
+            <div className="flex items-center justify-end px-6 py-4 border-t border-gray-200 flex-shrink-0">
               <button
                 type="button"
                 onClick={() => setSelectedStockInDetails(null)}
-                className="px-6 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-colors"
+                className="text-sm font-medium text-gray-700 hover:text-gray-900 transition"
               >
                 Close
               </button>
@@ -1414,58 +1367,73 @@ export default function StockIn({ stockIns, products, categories, suppliers }) {
 
       {/* Rejection Modal */}
       {rejectModal.isOpen && (
-        <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-gray-900">Reject Stock In Request</h3>
-              <button
-                type="button"
-                onClick={() => {
-                  setRejectModal({ isOpen: false, stockInId: null });
-                  setRejectReason('');
-                }}
-                className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
-              >
-                ×
-              </button>
-            </div>
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4">
+          <div className="relative w-full max-w-[460px] bg-white rounded-lg shadow-lg animate-in fade-in zoom-in duration-200">
+            {/* Close button */}
+            <button
+              type="button"
+              onClick={() => {
+                setRejectModal({ isOpen: false, stockInId: null });
+                setRejectReason('');
+              }}
+              className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
 
-            <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-3">
-                Please provide a reason for rejecting this stock in request:
-              </p>
+            {/* Content */}
+            <div className="p-6">
+              {/* Title */}
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Reject Stock In Request
+              </h3>
+
+              {/* Label */}
+              <label className="block text-xs text-gray-600 mb-2.5 font-medium">
+                Rejection reason
+              </label>
+
+              {/* Textarea */}
               <textarea
                 value={rejectReason}
                 onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="Enter rejection reason..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition resize-none"
-                rows="3"
+                placeholder="Explain why this request is being rejected…"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition resize-none"
+                rows="4"
                 maxLength="500"
               />
-              <div className="text-xs text-gray-500 mt-1">
-                {rejectReason.length}/500 characters
-              </div>
-            </div>
 
-            <div className="flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setRejectModal({ isOpen: false, stockInId: null });
-                  setRejectReason('');
-                }}
-                className="bg-gray-300 hover:bg-gray-400 text-gray-900 font-semibold py-2 px-4 rounded transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={submitReject}
-                disabled={!rejectReason.trim()}
-                className="bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white font-semibold py-2 px-4 rounded transition"
-              >
-                Reject Request
-              </button>
+              {/* Character counter and errors */}
+              <div className="flex items-center justify-between mt-2">
+                <div className="text-xs text-red-600">
+                  {/* Validation messages go here if needed */}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {rejectReason.length}/500
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3 justify-end mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRejectModal({ isOpen: false, stockInId: null });
+                    setRejectReason('');
+                  }}
+                  className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={submitReject}
+                  disabled={!rejectReason.trim()}
+                  className="px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  Reject Request
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1478,6 +1446,7 @@ export default function StockIn({ stockIns, products, categories, suppliers }) {
         onConfirm={confirmModal.onConfirm}
         title={confirmModal.title}
         message={confirmModal.message}
+        requestId={confirmModal.requestId}
         type={confirmModal.type}
         confirmText={confirmModal.confirmText}
       />

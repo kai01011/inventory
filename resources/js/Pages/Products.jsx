@@ -1,8 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Pencil, AlertTriangle } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Plus, Trash2, Pencil, AlertTriangle, X } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
 import { formatDateShort } from '@/utils/dateUtils';
 import {
   Dialog,
@@ -75,16 +75,19 @@ export default function Products({ products, categories, suppliers }) {
     warranty_date: '',
   });
 
-  const filteredProducts = products && products.filter(product => {
-    if (!searchTerm) return true;
-    const search = searchTerm.toLowerCase();
-    return [
-      product.product_name?.toLowerCase().startsWith(search),
-      product.barcode?.toLowerCase().startsWith(search),
-      product.category?.category_name?.toLowerCase().startsWith(search),
-      product.supplier?.supplier_name?.toLowerCase().startsWith(search),
-    ].some(Boolean);
-  });
+  // Memoize filtered products to avoid recalculating on every render
+  const filteredProducts = useMemo(() => {
+    return products && products.filter(product => {
+      if (!searchTerm) return true;
+      const search = searchTerm.toLowerCase();
+      return [
+        product.product_name?.toLowerCase().startsWith(search),
+        product.barcode?.toLowerCase().startsWith(search),
+        product.category?.category_name?.toLowerCase().startsWith(search),
+        product.supplier?.supplier_name?.toLowerCase().startsWith(search),
+      ].some(Boolean);
+    });
+  }, [products, searchTerm]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -140,19 +143,13 @@ export default function Products({ products, categories, suppliers }) {
       <Head title="Products" />
 
       <div className="p-4 md:p-6 bg-white min-h-screen">
-        {/* Page Header */}
+        {/* Toolbar */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Products</h1>
-            <p className="text-gray-600 text-xs md:text-sm mt-1">
-              Manage your products {searchTerm && `(${filteredProducts?.length || 0} results)`}
-            </p>
-          </div>
 
           {/* Add Product Dialog */}
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2 bg-red-600 hover:bg-red-700">
+              <Button className="gap-2 bg-red-600 hover:bg-red-700 text-white">
                 <Plus size={18} /> Add product
               </Button>
             </DialogTrigger>
@@ -216,7 +213,7 @@ export default function Products({ products, categories, suppliers }) {
                 </div>
                 <div className="flex justify-end gap-3 pt-4">
                   <Button type="button" onClick={() => setOpen(false)} variant="outline" className="border border-gray-300 text-gray-900 hover:bg-gray-50">Cancel</Button>
-                  <Button type="submit" disabled={processing} className="bg-red-600 hover:bg-red-700">{processing ? 'Adding...' : 'Add Product'}</Button>
+                  <Button type="submit" disabled={processing} className="bg-red-600 hover:bg-red-700 text-white">{processing ? 'Adding...' : 'Add Product'}</Button>
                 </div>
               </form>
             </DialogContent>
@@ -226,37 +223,35 @@ export default function Products({ products, categories, suppliers }) {
         {/* Table — no inner scroll, flows with the page */}
         <div className="border border-gray-200 rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-xs" style={{ tableLayout: 'fixed', minWidth: '860px' }}>
+            <table className="w-full text-xs">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-2 py-2.5 text-left font-semibold text-gray-900 w-10">ID</th>
-                  <th className="px-2 py-2.5 text-left font-semibold text-gray-900 w-36">Product</th>
-                  <th className="px-2 py-2.5 text-left font-semibold text-gray-900 w-24">Category</th>
-                  <th className="px-2 py-2.5 text-left font-semibold text-gray-900 w-32">Supplier</th>
-                  <th className="px-2 py-2.5 text-left font-semibold text-gray-900 w-20">Price</th>
-                  <th className="px-2 py-2.5 text-left font-semibold text-gray-900 w-28">Barcode</th>
-                  <th className="px-2 py-2.5 text-left font-semibold text-gray-900 w-16">Unit</th>
-                  <th className="px-2 py-2.5 text-left font-semibold text-gray-900 w-28">Serial No</th>
-                  <th className="px-2 py-2.5 text-left font-semibold text-gray-900 w-28">Actions</th>
+                  <th className="px-3 sm:px-4 py-3 text-left font-semibold text-gray-900 min-w-[120px]">Product</th>
+                  <th className="hidden sm:table-cell px-3 sm:px-4 py-3 text-left font-semibold text-gray-900 min-w-[100px]">Category</th>
+                  <th className="hidden md:table-cell px-3 sm:px-4 py-3 text-left font-semibold text-gray-900 min-w-[110px]">Supplier</th>
+                  <th className="px-3 sm:px-4 py-3 text-left font-semibold text-gray-900 min-w-[80px]">Price</th>
+                  <th className="hidden md:table-cell px-3 sm:px-4 py-3 text-left font-semibold text-gray-900 min-w-[110px]">Barcode</th>
+                  <th className="hidden lg:table-cell px-3 sm:px-4 py-3 text-left font-semibold text-gray-900 min-w-[90px]">Unit</th>
+                  <th className="hidden lg:table-cell px-3 sm:px-4 py-3 text-left font-semibold text-gray-900 min-w-[110px]">Serial No</th>
+                  <th className="px-3 sm:px-4 py-3 text-center font-semibold text-gray-900 min-w-[100px]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {filteredProducts && filteredProducts.length > 0 ? (
                   filteredProducts.map((product, idx) => (
                     <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-2 py-2.5 font-medium text-gray-900 truncate">{product.id}</td>
-                      <td className="px-2 py-2.5 font-medium text-gray-900 truncate" title={product.product_name}>{product.product_name}</td>
-                      <td className="px-2 py-2.5 text-gray-700 truncate" title={product.category?.category_name}>{product.category?.category_name || '-'}</td>
-                      <td className="px-2 py-2.5 text-gray-700 truncate" title={product.supplier?.supplier_name}>{product.supplier?.supplier_name || '-'}</td>
-                      <td className="px-2 py-2.5 text-gray-700 truncate">₱{parseFloat(product.price || 0).toFixed(2)}</td>
-                      <td className="px-2 py-2.5 text-gray-700 font-mono truncate" title={product.barcode}>{product.barcode || '-'}</td>
-                      <td className="px-2 py-2.5 text-gray-700 truncate">{product.unit || '-'}</td>
-                      <td className="px-2 py-2.5 text-gray-700 font-mono truncate" title={product.serial_no}>{product.serial_no || '-'}</td>
-                      <td className="px-2 py-2.5">
-                        <div className="flex items-center gap-1">
+                      <td className="px-3 sm:px-4 py-3 font-medium text-gray-900 truncate" title={product.product_name}>{product.product_name}</td>
+                      <td className="hidden sm:table-cell px-3 sm:px-4 py-3 text-gray-700 truncate" title={product.category?.category_name}>{product.category?.category_name || '-'}</td>
+                      <td className="hidden md:table-cell px-3 sm:px-4 py-3 text-gray-700 truncate" title={product.supplier?.supplier_name}>{product.supplier?.supplier_name || '-'}</td>
+                      <td className="px-3 sm:px-4 py-3 text-gray-700 truncate font-semibold">₱{parseFloat(product.price || 0).toFixed(2)}</td>
+                      <td className="hidden md:table-cell px-3 sm:px-4 py-3 text-gray-700 font-mono truncate text-xs" title={product.barcode}>{product.barcode || '-'}</td>
+                      <td className="hidden lg:table-cell px-3 sm:px-4 py-3 text-gray-700 truncate">{product.unit || '-'}</td>
+                      <td className="hidden lg:table-cell px-3 sm:px-4 py-3 text-gray-700 font-mono truncate text-xs" title={product.serial_no}>{product.serial_no || '-'}</td>
+                      <td className="px-3 sm:px-4 py-3">
+                        <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={() => setSelectedProductDetails(product)}
-                            className="text-blue-600 hover:text-blue-800 text-xs font-semibold px-1.5 py-0.5 bg-blue-50 rounded hover:bg-blue-100 transition whitespace-nowrap"
+                            className="text-blue-600 hover:text-blue-800 text-xs font-semibold px-2 py-2 bg-blue-50 rounded hover:bg-blue-100 transition whitespace-nowrap"
                             title="View details"
                           >
                             Details
@@ -264,16 +259,16 @@ export default function Products({ products, categories, suppliers }) {
                           <button
                             onClick={() => handleEditOpen(product)}
                             title="Edit product"
-                            className="group inline-flex items-center justify-center w-6 h-6 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white shadow-sm hover:shadow-blue-200 hover:shadow-md transition-all duration-200"
+                            className="group inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white shadow-sm hover:shadow-blue-200 hover:shadow-md transition-all duration-200"
                           >
-                            <Pencil size={11} className="group-hover:scale-110 transition-transform duration-200" />
+                            <Pencil size={16} className="group-hover:scale-110 transition-transform duration-200" />
                           </button>
                           <button
                             onClick={() => handleDelete(product.id)}
                             title="Delete product"
-                            className="group inline-flex items-center justify-center w-6 h-6 rounded-lg bg-red-100 text-red-600 hover:bg-red-600 hover:text-white shadow-sm hover:shadow-red-200 hover:shadow-md transition-all duration-200"
+                            className="group inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-600 hover:bg-red-600 hover:text-white shadow-sm hover:shadow-red-200 hover:shadow-md transition-all duration-200"
                           >
-                            <Trash2 size={11} className="group-hover:scale-110 transition-transform duration-200" />
+                            <Trash2 size={16} className="group-hover:scale-110 transition-transform duration-200" />
                           </button>
                         </div>
                       </td>
@@ -281,7 +276,7 @@ export default function Products({ products, categories, suppliers }) {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="9" className="px-2 py-8 text-center text-sm text-gray-600">
+                    <td colSpan="8" className="px-3 sm:px-4 py-8 text-center text-sm text-gray-600">
                       {searchTerm ? 'No products match your search' : 'No products found'}
                     </td>
                   </tr>
@@ -294,50 +289,89 @@ export default function Products({ products, categories, suppliers }) {
 
       {/* Product Details Modal */}
       {selectedProductDetails && (
-        <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 max-w-lg w-full shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-[560px] w-full max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 pt-6 pb-4">
               <h3 className="text-lg font-bold text-gray-900">{selectedProductDetails.product_name}</h3>
-              <button type="button" onClick={() => setSelectedProductDetails(null)} className="text-gray-500 hover:text-gray-700 text-2xl leading-none">×</button>
+              <button 
+                type="button" 
+                onClick={() => setSelectedProductDetails(null)} 
+                className="text-gray-400 hover:text-gray-600 transition"
+                aria-label="Close dialog"
+              >
+                <X size={24} />
+              </button>
             </div>
-            <div className="space-y-3 text-sm">
-              <div className="bg-gray-50 p-3 rounded">
-                <span className="font-semibold text-gray-900">Category:</span>
-                <p className="text-gray-700">{selectedProductDetails.category?.category_name || 'Not assigned'}</p>
-              </div>
-              <div className="bg-gray-50 p-3 rounded">
-                <span className="font-semibold text-gray-900">Supplier:</span>
-                <p className="text-gray-700">{selectedProductDetails.supplier?.supplier_name || 'Not assigned'}</p>
-              </div>
-              <div className="bg-gray-50 p-3 rounded">
-                <span className="font-semibold text-gray-900">Barcode:</span>
-                <p className="text-gray-700 font-mono">{selectedProductDetails.barcode || '-'}</p>
-              </div>
-              <div className="bg-gray-50 p-3 rounded">
-                <span className="font-semibold text-gray-900">Serial No:</span>
-                <p className="text-gray-700 font-mono">{selectedProductDetails.serial_no || '-'}</p>
-              </div>
-              <div className="bg-gray-50 p-3 rounded">
-                <span className="font-semibold text-gray-900">Unit:</span>
-                <p className="text-gray-700">{selectedProductDetails.unit || '-'}</p>
-              </div>
-              <div className="bg-blue-50 p-3 rounded border border-blue-200">
-                <span className="font-semibold text-gray-900">Price:</span>
-                <p className="text-lg font-bold text-blue-600">₱{parseFloat(selectedProductDetails.price || 0).toFixed(2)}</p>
-              </div>
-              <div className="bg-green-50 p-3 rounded border border-green-200">
-                <span className="font-semibold text-gray-900">Available Quantity:</span>
-                <p className="text-2xl font-bold text-green-600">{selectedProductDetails.quantity || 0} {selectedProductDetails.unit || 'units'}</p>
-              </div>
-              {selectedProductDetails.warranty_date && (
-                <div className="bg-gray-50 p-3 rounded">
-                  <span className="font-semibold text-gray-900">Warranty Date:</span>
-                  <p className="text-gray-700">{formatDateShort(selectedProductDetails.warranty_date)}</p>
+
+            {/* Scrollable Content */}
+            <div className="overflow-y-auto flex-1 px-6">
+              {/* Price & Quantity Summary */}
+              <div className="grid grid-cols-2 gap-4 pb-4 mb-4">
+                <div className="flex flex-col">
+                  <span className="text-xs text-gray-600 mb-1">Price</span>
+                  <p className="text-base font-semibold text-gray-900">₱{parseFloat(selectedProductDetails.price || 0).toFixed(2)}</p>
                 </div>
-              )}
+                <div className="flex flex-col">
+                  <span className="text-xs text-gray-600 mb-1">Available Quantity</span>
+                  <p className="text-base font-semibold text-gray-900">
+                    {Number.isInteger(parseFloat(selectedProductDetails.quantity || 0)) 
+                      ? `${parseInt(selectedProductDetails.quantity || 0)} ${selectedProductDetails.unit || 'units'}`
+                      : `${parseFloat(selectedProductDetails.quantity || 0).toFixed(2)} ${selectedProductDetails.unit || 'units'}`
+                    }
+                  </p>
+                </div>
+              </div>
+
+              {/* Details Grid */}
+              <div className="space-y-4">
+                {/* Category & Unit */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-xs text-gray-600">Category</span>
+                    <p className="text-sm text-gray-900 break-words">{selectedProductDetails.category?.category_name || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-600">Unit</span>
+                    <p className="text-sm text-gray-900 break-words">{selectedProductDetails.unit || '-'}</p>
+                  </div>
+                </div>
+
+                {/* Supplier - Full Width */}
+                <div>
+                  <span className="text-xs text-gray-600">Supplier</span>
+                  <p className="text-sm text-gray-900 break-words">{selectedProductDetails.supplier?.supplier_name || '-'}</p>
+                </div>
+
+                {/* Barcode & Serial Number */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-xs text-gray-600">Barcode</span>
+                    <p className="text-sm text-gray-900 font-mono break-all">{selectedProductDetails.barcode || '-'}</p>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-600">Serial No</span>
+                    <p className="text-sm text-gray-900 font-mono break-words">{selectedProductDetails.serial_no || '-'}</p>
+                  </div>
+                </div>
+
+                {/* Warranty Date */}
+                {selectedProductDetails.warranty_date && (
+                  <div>
+                    <span className="text-xs text-gray-600">Warranty Date</span>
+                    <p className="text-sm text-gray-900">{formatDateShort(selectedProductDetails.warranty_date)}</p>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="mt-4">
-              <button type="button" onClick={() => setSelectedProductDetails(null)} className="w-full bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-2 px-4 rounded transition">
+
+            {/* Footer Divider & Close Button */}
+            <div className="border-t border-gray-200 px-6 py-4 flex justify-end">
+              <button 
+                type="button" 
+                onClick={() => setSelectedProductDetails(null)} 
+                className="text-sm font-medium text-gray-700 hover:text-gray-900 transition"
+              >
                 Close
               </button>
             </div>

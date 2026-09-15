@@ -43,23 +43,6 @@ export function formatDateShort(date) {
 }
 
 /**
- * Format date for display (long format with day) - exact database date
- */
-export function formatDateLong(date) {
-    if (!date) return '';
-    
-    const inputDate = new Date(date);
-    
-    // Get date components without timezone conversion
-    const weekday = inputDate.toLocaleDateString('en-US', { weekday: 'long' });
-    const year = inputDate.getFullYear();
-    const month = inputDate.toLocaleDateString('en-US', { month: 'long' });
-    const day = inputDate.getDate();
-    
-    return `${weekday}, ${month} ${day}, ${year}`;
-}
-
-/**
  * Format time for display - exact database time with AM/PM
  */
 export function formatTimePhilippines(date, options = {}) {
@@ -90,19 +73,7 @@ export function getCurrentTime() {
         hour: now.getHours(),
         formatted: formatDatePhilippines(now),
         shortDate: formatDateShort(now),
-        longDate: formatDateLong(now)
     };
-}
-
-/**
- * Get greeting based on current time
- */
-export function getTimeBasedGreeting() {
-    const { hour } = getCurrentTime();
-    
-    if (hour < 12) return 'Good morning';
-    if (hour < 17) return 'Good afternoon';
-    return 'Good evening';
 }
 
 /**

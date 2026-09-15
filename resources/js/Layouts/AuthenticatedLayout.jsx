@@ -20,7 +20,7 @@ export default function AuthenticatedLayout({ children, onSearch }) {
 
     return (
         <div className="flex min-h-screen bg-white font-sans">
-            {/* Sidebar - Always shown, but changes width */}
+            {/* Sidebar - Fixed on left side */}
             <Sidebar 
                 open={sidebarOpen} 
                 onToggle={() => setSidebarOpen(!sidebarOpen)}
@@ -29,16 +29,18 @@ export default function AuthenticatedLayout({ children, onSearch }) {
 
             {/* Main Content - Adjust margin based on sidebar state */}
             <div className={`flex-1 flex flex-col transition-all duration-300 ${sidebarOpen ? 'ml-64' : 'ml-16'}`}>
-                {/* Header */}
-                <Header 
-                    sidebarOpen={sidebarOpen} 
-                    onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-                    onSearch={handleSearch}
-                    searchTerm={searchTerm}
-                    setSearchTerm={setSearchTerm}
-                />
+                {/* Header - Sticky, stays visible when scrolling content */}
+                <div className="sticky top-0 z-30">
+                    <Header 
+                        sidebarOpen={sidebarOpen} 
+                        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+                        onSearch={handleSearch}
+                        searchTerm={searchTerm}
+                        setSearchTerm={setSearchTerm}
+                    />
+                </div>
 
-                {/* Page Content */}
+                {/* Page Content - Scrollable independently */}
                 <div className="flex-1 overflow-auto bg-white min-h-0">
                     {children}
                 </div>

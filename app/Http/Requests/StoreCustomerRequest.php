@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreCustomerRequest extends FormRequest
 {
@@ -20,7 +21,12 @@ class StoreCustomerRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'customer_name' => 'required|string|max:255',
+            'customer_name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('customers', 'customer_name')->ignore($this->route('customer')),
+            ],
         ];
     }
 }

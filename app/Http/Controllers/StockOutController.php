@@ -147,35 +147,22 @@ class StockOutController extends Controller
     public function destroy($id)
     {
         $stockOut = StockOut::findOrFail($id);
+        
+        // Only allow deletion of pending stock outs
+        if ($stockOut->status !== 'pending') {
+            abort(403, 'Can only delete pending stock out requests. Current status: ' . $stockOut->status);
+        }
+        
+        // Only admin or the requester can delete
+        $isAdmin = auth()->user()->role->role_name === 'Admin';
+        $isRequester = $stockOut->requested_by_id === auth()->id();
+        
+        if (!$isAdmin && !$isRequester) {
+            abort(403, 'Only administrators or the requester can delete this stock out.');
+        }
+        
         $stockOut->delete();
         
         return redirect('/stock-out');
-    }
-
-    // Debug method to check database content
-    public function debug()
-    {
-        $user = auth()->user();
-        $allStockOuts = StockOut::with('requestedBy')->get();
-        
-        $debug = [
-            'current_user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'role' => $user->role->role_name ?? 'No role'
-            ],
-            'total_stock_outs' => $allStockOuts->count(),
-            'stock_outs' => $allStockOuts->map(function($so) {
-                return [
-                    'id' => $so->id,
-                    'requested_by_id' => $so->requested_by_id,
-                    'requested_by_name' => $so->requestedBy->name ?? 'Unknown',
-                    'status' => $so->status,
-                    'created_at' => $so->created_at->format('Y-m-d H:i:s'),
-                ];
-            })
-        ];
-        
-        return response()->json($debug);
     }
 }

@@ -3,7 +3,7 @@ import { Head, useForm, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Edit3, UserCheck, UserX, Shield } from 'lucide-react';
 import SearchInput from '@/components/SearchInput';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { formatDateTimeSingleLine } from '@/utils/dateUtils';
 import {
   Dialog,
@@ -118,15 +118,18 @@ export default function Users({ users, roles }) {
     return null;
   };
 
-  const filteredUsers = users.filter(user => {
-    if (!searchTerm) return true;
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      user.name.toLowerCase().includes(searchLower) ||
-      user.email.toLowerCase().includes(searchLower) ||
-      user.role?.role_name?.toLowerCase().includes(searchLower)
-    );
-  });
+  // Memoize filtered users to avoid recalculating on every render
+  const filteredUsers = useMemo(() => {
+    return users.filter(user => {
+      if (!searchTerm) return true;
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        user.name.toLowerCase().includes(searchLower) ||
+        user.email.toLowerCase().includes(searchLower) ||
+        user.role?.role_name?.toLowerCase().includes(searchLower)
+      );
+    });
+  }, [users, searchTerm]);
 
   return (
     <AuthenticatedLayout>
@@ -134,14 +137,8 @@ export default function Users({ users, roles }) {
       
       <div className="p-8 bg-white min-h-screen">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Users</h1>
-              <p className="text-gray-600 text-sm mt-1">
-                Manage system users and roles {searchTerm && `(${filteredUsers.length} results)`}
-              </p>
-            </div>
+          {/* Toolbar */}
+          <div className="flex items-center justify-between mb-6">
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
                 <Button className="gap-2 bg-red-600 hover:bg-red-700">
@@ -258,43 +255,43 @@ export default function Users({ users, roles }) {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Name</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Email</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Role</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Created</th>
-                  <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Actions</th>
+                  <th className="px-3 sm:px-4 py-3 text-left text-sm font-semibold text-gray-900 min-w-[120px]">Name</th>
+                  <th className="hidden sm:table-cell px-3 sm:px-4 py-3 text-left text-sm font-semibold text-gray-900 min-w-[140px]">Email</th>
+                  <th className="px-3 sm:px-4 py-3 text-left text-sm font-semibold text-gray-900 min-w-[100px]">Role</th>
+                  <th className="hidden md:table-cell px-3 sm:px-4 py-3 text-left text-sm font-semibold text-gray-900 min-w-[120px]">Created</th>
+                  <th className="px-3 sm:px-4 py-3 text-center text-sm font-semibold text-gray-900 min-w-[100px]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {filteredUsers && filteredUsers.length > 0 ? (
                   filteredUsers.map((user) => (
                     <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{user.name}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{user.email}</td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 sm:px-4 py-3 text-sm font-medium text-gray-900">{user.name}</td>
+                      <td className="hidden sm:table-cell px-3 sm:px-4 py-3 text-sm text-gray-600 truncate" title={user.email}>{user.email}</td>
+                      <td className="px-3 sm:px-4 py-3">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(user.role?.role_name)}`}>
                           {getRoleIcon(user.role?.role_name)}
                           {user.role?.role_name || 'N/A'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
+                      <td className="hidden md:table-cell px-3 sm:px-4 py-3 text-sm text-gray-600">
                         {formatDateTimeSingleLine(user.created_at)}
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-1.5">
+                      <td className="px-3 sm:px-4 py-3">
+                        <div className="flex items-center justify-center gap-2">
                           <button
                             onClick={() => handleEdit(user)}
                             title="Edit user"
                             className="group inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white shadow-sm hover:shadow-blue-200 hover:shadow-md transition-all duration-200"
                           >
-                            <Edit3 size={14} className="group-hover:scale-110 transition-transform duration-200" />
+                            <Edit3 size={16} className="group-hover:scale-110 transition-transform duration-200" />
                           </button>
                           <button
                             onClick={() => handleDelete(user.id, user.name)}
                             title="Delete user"
                             className="group inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-600 hover:bg-red-600 hover:text-white shadow-sm hover:shadow-red-200 hover:shadow-md transition-all duration-200"
                           >
-                            <Trash2 size={14} className="group-hover:scale-110 transition-transform duration-200" />
+                            <Trash2 size={16} className="group-hover:scale-110 transition-transform duration-200" />
                           </button>
                         </div>
                       </td>
@@ -302,7 +299,7 @@ export default function Users({ users, roles }) {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan="5" className="px-3 sm:px-4 py-8 text-center text-gray-500">
                       {searchTerm ? 'No users found matching your search.' : 'No users found.'}
                     </td>
                   </tr>

@@ -1,8 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, router } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Package, AlertCircle, TrendingDown, TrendingUp, Plus, ArrowDownLeft, ArrowUpRight, Box, Building2, Users, Folder, ChevronRight } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { formatDateShort, formatTimePhilippines } from '@/utils/dateUtils';
 
 export default function Dashboard({ user, stats, lowStockItems, recentActivity, inventorySummary }) {
@@ -33,48 +33,81 @@ export default function Dashboard({ user, stats, lowStockItems, recentActivity, 
   const safeRecentActivity = Array.isArray(recentActivity) ? recentActivity : [];
   const safeLowStockItems = Array.isArray(lowStockItems) ? lowStockItems : [];
 
-  // Filter recent activity based on search term
-  const filteredRecentActivity = safeRecentActivity.filter(activity => {
-    if (!searchTerm) return true;
-    const search = searchTerm.toLowerCase().trim();
+  // Memoize filtered recent activity to avoid recalculating on every render
+  const filteredRecentActivity = useMemo(() => {
+    return safeRecentActivity.filter(activity => {
+      if (!searchTerm) return true;
+      const search = searchTerm.toLowerCase().trim();
 
-    // Build date variants from created_at
-    const recordDate = activity.created_at ? new Date(activity.created_at) : null;
-    const isoDate       = recordDate ? recordDate.toISOString().split('T')[0] : '';          // 2026-08-19
-    const localeDate    = recordDate ? recordDate.toLocaleDateString('en-US') : '';           // 8/19/2026
-    const shortDate     = recordDate ? recordDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase() : ''; // aug 19, 2026
-    const formattedTime = recordDate ? recordDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).toLowerCase() : ''; // 12:00 am
+      // Build date variants from created_at
+      const recordDate = activity.created_at ? new Date(activity.created_at) : null;
+      const isoDate       = recordDate ? recordDate.toISOString().split('T')[0] : '';
+      const localeDate    = recordDate ? recordDate.toLocaleDateString('en-US') : '';
+      const shortDate     = recordDate ? recordDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase() : '';
+      const formattedTime = recordDate ? recordDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }).toLowerCase() : '';
 
-    return [
-      activity.user?.toLowerCase().startsWith(search),
-      activity.type?.toLowerCase().startsWith(search),
-      activity.status?.toLowerCase().startsWith(search),
-      activity.item?.toLowerCase().startsWith(search),
-      isoDate.startsWith(search),
-      localeDate.startsWith(search),
-      shortDate.startsWith(search),
-      formattedTime.startsWith(search),
-    ].some(Boolean);
-  });
+      return [
+        activity.user?.toLowerCase().startsWith(search),
+        activity.type?.toLowerCase().startsWith(search),
+        activity.status?.toLowerCase().startsWith(search),
+        activity.item?.toLowerCase().startsWith(search),
+        isoDate.startsWith(search),
+        localeDate.startsWith(search),
+        shortDate.startsWith(search),
+        formattedTime.startsWith(search),
+      ].some(Boolean);
+    });
+  }, [safeRecentActivity, searchTerm]);
 
-  // Filter low stock items based on search term - prioritize starts with
-  const filteredLowStockItems = safeLowStockItems.filter(item => {
-    if (!searchTerm) return true;
-    const search = searchTerm.toLowerCase().trim();
-    return [
-      item.product_name?.toLowerCase().startsWith(search),
-      item.category?.toLowerCase().startsWith(search),
-      item.supplier?.toLowerCase().startsWith(search),
-    ].some(Boolean);
-  });
+  // Memoize filtered low stock items to avoid recalculating on every render
+  const filteredLowStockItems = useMemo(() => {
+    return safeLowStockItems.filter(item => {
+      if (!searchTerm) return true;
+      const search = searchTerm.toLowerCase().trim();
+      return [
+        item.product_name?.toLowerCase().startsWith(search),
+        item.category?.toLowerCase().startsWith(search),
+        item.supplier?.toLowerCase().startsWith(search),
+      ].some(Boolean);
+    });
+  }, [safeLowStockItems, searchTerm]);
 
-  // Auto-refresh every 10 seconds to sync dashboard data
+  // Auto-refresh every 60 seconds, but pause when tab is hidden (page visibility API)
   useEffect(() => {
-    const interval = setInterval(() => {
-      router.reload({ only: ['stats', 'lowStockItems', 'recentActivity', 'inventorySummary'], preserveScroll: true, preserveState: true });
-    }, 10000); // 10 seconds for dashboard
+    let interval;
+    
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Pause refresh when tab hidden
+        if (interval) clearInterval(interval);
+      } else {
+        // Resume refresh when tab becomes visible
+        interval = setInterval(() => {
+          router.reload({ 
+            only: ['stats', 'lowStockItems', 'recentActivity', 'inventorySummary'], 
+            preserveScroll: true, 
+            preserveState: true 
+          });
+        }, 60000); // 60 seconds (reduced from 10s aggressive refresh)
+      }
+    };
 
-    return () => clearInterval(interval);
+    // Start initial interval only if tab is visible
+    if (!document.hidden) {
+      interval = setInterval(() => {
+        router.reload({ 
+          only: ['stats', 'lowStockItems', 'recentActivity', 'inventorySummary'], 
+          preserveScroll: true, 
+          preserveState: true 
+        });
+      }, 60000);
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      if (interval) clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   // Status color helper
@@ -123,7 +156,7 @@ export default function Dashboard({ user, stats, lowStockItems, recentActivity, 
                   key={idx} 
                   className={`bg-white border rounded-lg p-6 hover:shadow-md transition-all duration-200 ${
                     isLowStock 
-                      ? 'border-red-300 hover:border-red-400 bg-gradient-to-br from-red-50 to-white' 
+                      ? 'border-gray-200 hover:border-gray-300' 
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
@@ -159,41 +192,32 @@ export default function Dashboard({ user, stats, lowStockItems, recentActivity, 
           {/* Quick Actions Section */}
           <div className="mb-8">
             <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="flex flex-wrap gap-3">
               {/* Primary Action - Add Product */}
-              <button
-                onClick={() => router.visit('/products')}
-                className="flex items-center justify-between bg-red-600 hover:bg-red-700 text-white px-6 py-4 rounded-lg font-medium focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 group shadow-md hover:shadow-lg"
+              <Link
+                href="/products"
+                className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-lg font-medium focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200 shadow-sm hover:shadow-md"
               >
-                <div className="flex items-center gap-3">
-                  <Plus size={20} />
-                  <span>Add Product</span>
-                </div>
-                <ChevronRight size={18} className="opacity-75 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
-              </button>
+                <Plus size={18} />
+                <span>Add Product</span>
+              </Link>
 
               {/* Secondary Actions */}
-              <button
-                onClick={() => router.visit('/stock-in')}
-                className="flex items-center justify-between bg-white border border-gray-200 text-gray-700 px-6 py-4 rounded-lg font-medium hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 group"
+              <Link
+                href="/stock-in"
+                className="inline-flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-lg font-medium hover:bg-gray-50 hover:border-gray-300 transition-all duration-200"
               >
-                <div className="flex items-center gap-3">
-                  <ArrowDownLeft size={20} />
-                  <span>Stock In</span>
-                </div>
-                <ChevronRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-              </button>
+                <ArrowDownLeft size={18} />
+                <span>Stock In</span>
+              </Link>
 
-              <button
-                onClick={() => router.visit('/stock-out')}
-                className="flex items-center justify-between bg-white border border-gray-200 text-gray-700 px-6 py-4 rounded-lg font-medium hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 group"
+              <Link
+                href="/stock-out"
+                className="inline-flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2.5 rounded-lg font-medium hover:bg-gray-50 hover:border-gray-300 transition-all duration-200"
               >
-                <div className="flex items-center gap-3">
-                  <ArrowUpRight size={20} />
-                  <span>Stock Out</span>
-                </div>
-                <ChevronRight size={18} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-              </button>
+                <ArrowUpRight size={18} />
+                <span>Stock Out</span>
+              </Link>
             </div>
           </div>
 
@@ -206,12 +230,12 @@ export default function Dashboard({ user, stats, lowStockItems, recentActivity, 
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
                   <h3 className="text-lg font-semibold text-gray-900">Low Stock Items</h3>
                   {filteredLowStockItems.length > 0 && (
-                    <button
-                      onClick={() => router.visit('/products')}
+                    <Link
+                      href="/products"
                       className="text-sm text-red-600 hover:text-red-700 font-medium flex items-center gap-1 transition-colors"
                     >
                       View All <ChevronRight size={16} />
-                    </button>
+                    </Link>
                   )}
                 </div>
 
@@ -283,7 +307,6 @@ export default function Dashboard({ user, stats, lowStockItems, recentActivity, 
                   { label: 'Categories', value: inventorySummary.categories, icon: Folder },
                   { label: 'Suppliers', value: inventorySummary.suppliers, icon: Building2 },
                   { label: 'Customers', value: inventorySummary.customers, icon: Users },
-                  { label: 'Total Products', value: inventorySummary.total_products, icon: Box },
                 ].map((item, idx) => {
                   const Icon = item.icon;
                   return (
@@ -307,23 +330,23 @@ export default function Dashboard({ user, stats, lowStockItems, recentActivity, 
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
               {filteredRecentActivity.length > 0 && (
-                <button
-                  onClick={() => router.visit('/history')}
+                <Link
+                  href="/history"
                   className="text-sm text-red-600 hover:text-red-700 font-medium flex items-center gap-1 transition-colors"
                 >
                   View All <ChevronRight size={16} />
-                </button>
+                </Link>
               )}
             </div>
 
             {filteredRecentActivity && filteredRecentActivity.length > 0 ? (
               <div className="divide-y divide-gray-200">
-                {filteredRecentActivity.slice(0, 8).map((activity, idx) => (
+                {filteredRecentActivity.slice(0, 5).map((activity, idx) => (
                   <div key={idx} className="px-6 py-4 hover:bg-gray-50 transition-colors">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-2">
-                          <div className={`p-2 rounded-lg ${
+                          <div className={`p-2 rounded-lg flex-shrink-0 ${
                             activity.type === 'stock_in' ? 'bg-green-100' : 'bg-orange-100'
                           }`}>
                             {activity.type === 'stock_in' ? 
@@ -331,8 +354,8 @@ export default function Dashboard({ user, stats, lowStockItems, recentActivity, 
                               <ArrowUpRight size={16} className="text-orange-600" />
                             }
                           </div>
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-gray-900 truncate">
                               {activity.item}
                             </p>
                             <p className="text-xs text-gray-500 mt-0.5">
@@ -340,36 +363,23 @@ export default function Dashboard({ user, stats, lowStockItems, recentActivity, 
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 ml-11">
-                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium border ${getStatusColor(activity.status)}`}>
+                        <div className="flex items-center gap-2 ml-11 flex-wrap">
+                          <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium border ${getStatusColor(activity.status)}`}>
                             {activity.status}
                           </span>
                           <span className="text-xs text-gray-600">by {activity.user}</span>
                         </div>
                       </div>
-                      <div className="text-right ml-4 flex flex-col items-end gap-2">
-                        {/* Quantity indicator only for approved transactions */}
-                        {activity.status === 'approved' && (
-                          <div className={`px-2 py-1 rounded-md text-xs font-bold ${
-                            activity.type === 'stock_in' 
-                              ? 'bg-green-100 text-green-700 border border-green-300' 
-                              : 'bg-orange-100 text-orange-700 border border-orange-300'
-                          }`}>
-                            {activity.type === 'stock_in' ? '+' : '-'}{activity.quantity}
-                          </div>
-                        )}
-                        
-                        {/* Status indicator dots only */}
-                        {activity.status === 'approved' && (
-                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        )}
-                        {activity.status === 'rejected' && (
-                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                        )}
-                        {activity.status === 'pending' && (
-                          <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-                        )}
-                      </div>
+                      {/* Quantity indicator only for approved transactions */}
+                      {activity.status === 'approved' && (
+                        <div className={`px-2 py-1 rounded-md text-xs font-bold flex-shrink-0 ${
+                          activity.type === 'stock_in' 
+                            ? 'bg-green-100 text-green-700 border border-green-300' 
+                            : 'bg-orange-100 text-orange-700 border border-orange-300'
+                        }`}>
+                          {activity.type === 'stock_in' ? '+' : '-'}{activity.quantity}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -431,16 +441,13 @@ export default function Dashboard({ user, stats, lowStockItems, recentActivity, 
             </div>
 
             <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedProduct(null);
-                  router.visit('/products');
-                }}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded transition-colors"
+              <Link
+                href="/products"
+                onClick={() => setSelectedProduct(null)}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded transition-colors text-center"
               >
                 View in Products
-              </button>
+              </Link>
               <button
                 type="button"
                 onClick={() => setSelectedProduct(null)}

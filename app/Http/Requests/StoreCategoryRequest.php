@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreCategoryRequest extends FormRequest
 {
@@ -20,7 +21,12 @@ class StoreCategoryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'category_name' => 'required|string|max:255|unique:categories,category_name',
+            'category_name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('categories', 'category_name')->ignore($this->route('category')),
+            ],
         ];
     }
 }

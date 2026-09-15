@@ -13,6 +13,14 @@ class DeliveryReceiptController extends Controller
     public function generateReceipt($id)
     {
         $stockOut = StockOut::with('customer', 'items.product')->findOrFail($id);
+        
+        // Authorization: admin or requester can download
+        $isAdmin = auth()->user()->role->role_name === 'Admin';
+        $isRequester = $stockOut->requested_by_id === auth()->id();
+        
+        if (!$isAdmin && !$isRequester) {
+            abort(403, 'You are not authorized to access this delivery receipt.');
+        }
 
         $data = [
             'receipt_no' => $stockOut->delivery_no,
@@ -41,6 +49,14 @@ class DeliveryReceiptController extends Controller
     public function view($id)
     {
         $stockOut = StockOut::with('customer', 'items.product')->findOrFail($id);
+        
+        // Authorization: admin or requester can view
+        $isAdmin = auth()->user()->role->role_name === 'Admin';
+        $isRequester = $stockOut->requested_by_id === auth()->id();
+        
+        if (!$isAdmin && !$isRequester) {
+            abort(403, 'You are not authorized to access this delivery receipt.');
+        }
 
         $companyInfo = [
             'name' => 'CRAVE DIGITAL ADVERTISING SUPPLIES AND SERVICES',

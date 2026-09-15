@@ -51,6 +51,12 @@ class HistoryController extends Controller
             return array_merge($data, [
                 'stock_out_status' => $h->stockOut?->status,
                 'stock_in_status' => $h->stockIn?->status,
+                'stock_out' => $h->stockOut ? array_merge($h->stockOut->toArray(), [
+                    'delivery_no' => $h->stockOut->delivery_no,
+                    'customer' => $h->stockOut->customer,
+                    'requested_by' => $h->stockOut->requestedBy,
+                ]) : null,
+                'stock_in' => $h->stockIn ? $h->stockIn->toArray() : null,
             ]);
         });
 
