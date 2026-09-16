@@ -486,6 +486,16 @@ export default function History({ histories }) {
                     </div>
                   )}
 
+                  {/* Rejection Information for Stock Out */}
+                  {selectedDetails.type === 'stock-out' && selectedDetails.status === 'rejected' && selectedDetails.stockOut?.rejection_reason && (
+                    <div className="pt-4 border-t border-gray-200">
+                      <span className="text-xs text-red-600">Rejection Reason</span>
+                      <p className="text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg p-3 mt-1">
+                        {selectedDetails.stockOut.rejection_reason}
+                      </p>
+                    </div>
+                  )}
+
                   {/* Items */}
                   <div className="pt-4 border-t border-gray-200">
                     <h4 className="font-medium text-gray-900 mb-3">Items</h4>

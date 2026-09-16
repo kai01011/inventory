@@ -11,6 +11,9 @@ export default function DashboardHeader({ user, onSearch, searchTerm: externalSe
     const [showMobileSearch, setShowMobileSearch] = useState(false);
     const userMenuRef = useRef(null);
 
+    // Hide global search on Users page (uses page-specific search instead)
+    const hideGlobalSearch = component === 'Users';
+
     // Get current date
     const currentTime = getCurrentTime();
 
@@ -65,41 +68,47 @@ export default function DashboardHeader({ user, onSearch, searchTerm: externalSe
 
                     {/* Right side - Search, Notifications, User Menu */}
                     <div className="flex items-center gap-3 ml-auto flex-shrink-0">
-                        {/* Mobile Search Button */}
-                        <button
-                            onClick={() => setShowMobileSearch(true)}
-                            className="block md:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-                            aria-label="Search"
-                        >
-                            <Search size={18} />
-                        </button>
+                        {/* Mobile Search Button - Hidden on Users page */}
+                        {!hideGlobalSearch && (
+                            <button
+                                onClick={() => setShowMobileSearch(true)}
+                                className="block md:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                                aria-label="Search"
+                            >
+                                <Search size={18} />
+                            </button>
+                        )}
 
-                        {/* Global Search - Hidden on mobile */}
-                        <div className="relative hidden lg:block">
-                            <SearchInput
-                                id="dashboard-header-search"
-                                onSearch={onSearch}
-                                searchTerm={externalSearchTerm}
-                                setSearchTerm={externalSetSearchTerm}
-                                placeholder="Search inventory…"
-                                width="w-64"
-                                size="md"
-                                showShortcut={false}
-                            />
-                        </div>
+                        {/* Global Search - Hidden on Users page */}
+                        {!hideGlobalSearch && (
+                            <div className="relative hidden lg:block">
+                                <SearchInput
+                                    id="dashboard-header-search"
+                                    onSearch={onSearch}
+                                    searchTerm={externalSearchTerm}
+                                    setSearchTerm={externalSetSearchTerm}
+                                    placeholder="Search inventory…"
+                                    width="w-64"
+                                    size="md"
+                                    showShortcut={false}
+                                />
+                            </div>
+                        )}
 
-                        {/* Compact Search for Tablet */}
-                        <div className="relative hidden md:block lg:hidden">
-                            <SearchInput
-                                id="dashboard-header-search-tablet"
-                                onSearch={onSearch}
-                                searchTerm={externalSearchTerm}
-                                setSearchTerm={externalSetSearchTerm}
-                                placeholder="Search inventory…"
-                                width="w-48"
-                                size="sm"
-                            />
-                        </div>
+                        {/* Compact Search for Tablet - Hidden on Users page */}
+                        {!hideGlobalSearch && (
+                            <div className="relative hidden md:block lg:hidden">
+                                <SearchInput
+                                    id="dashboard-header-search-tablet"
+                                    onSearch={onSearch}
+                                    searchTerm={externalSearchTerm}
+                                    setSearchTerm={externalSetSearchTerm}
+                                    placeholder="Search inventory…"
+                                    width="w-48"
+                                    size="sm"
+                                />
+                            </div>
+                        )}
 
                         {/* Notification Bell */}
                         <div className="relative">
@@ -183,8 +192,8 @@ export default function DashboardHeader({ user, onSearch, searchTerm: externalSe
                 </div>
             </div>
 
-            {/* Mobile Search Overlay */}
-            {showMobileSearch && (
+            {/* Mobile Search Overlay - Hidden on Users page */}
+            {!hideGlobalSearch && showMobileSearch && (
                 <div className="fixed inset-0 bg-white z-50 md:hidden">
                     <div className="flex items-center gap-3 p-4 border-b border-gray-200">
                         <button

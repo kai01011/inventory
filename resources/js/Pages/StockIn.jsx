@@ -1057,66 +1057,59 @@ export default function StockIn({ stockIns, products, categories, suppliers }) {
             </div>
           </div>
 
-          {/* Tabs - Only show for Admin */}
-          {isAdmin && (
-            <div className="mb-5 border-b border-gray-200">
-              <div className="flex gap-8">
-                <button
-                  onClick={() => setActiveTab('pending')}
-                  className={`pb-3 text-sm transition-colors border-b-2 ${
-                    activeTab === 'pending'
-                      ? 'border-red-600 text-gray-900 font-medium'
-                      : 'border-transparent text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Pending Requests
-                  <span className={`ml-2 text-xs font-normal ${activeTab === 'pending' ? 'text-gray-600' : 'text-gray-500'}`}>
-                    ({pendingRequests.length})
-                  </span>
-                </button>
-                <button
-                  onClick={() => setActiveTab('approved')}
-                  className={`pb-3 text-sm transition-colors border-b-2 ${
-                    activeTab === 'approved'
-                      ? 'border-red-600 text-gray-900 font-medium'
-                      : 'border-transparent text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Approved
-                  <span className={`ml-2 text-xs font-normal ${activeTab === 'approved' ? 'text-gray-600' : 'text-gray-500'}`}>
-                    ({approvedRequests.length})
-                  </span>
-                </button>
-                <button
-                  onClick={() => setActiveTab('rejected')}
-                  className={`pb-3 text-sm transition-colors border-b-2 ${
-                    activeTab === 'rejected'
-                      ? 'border-red-600 text-gray-900 font-medium'
-                      : 'border-transparent text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Rejected
-                  <span className={`ml-2 text-xs font-normal ${activeTab === 'rejected' ? 'text-gray-600' : 'text-gray-500'}`}>
-                    ({rejectedRequests.length})
-                  </span>
-                </button>
-              </div>
+          {/* Tabs - Show to all users */}
+          <div className="mb-5 border-b border-gray-200">
+            <div className="flex gap-8">
+              <button
+                onClick={() => setActiveTab('pending')}
+                className={`pb-3 text-sm transition-colors border-b-2 ${
+                  activeTab === 'pending'
+                    ? 'border-red-600 text-gray-900 font-medium'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Pending Requests
+                <span className={`ml-2 text-xs font-normal ${activeTab === 'pending' ? 'text-gray-600' : 'text-gray-500'}`}>
+                  ({pendingRequests.length})
+                </span>
+              </button>
+              <button
+                onClick={() => setActiveTab('approved')}
+                className={`pb-3 text-sm transition-colors border-b-2 ${
+                  activeTab === 'approved'
+                    ? 'border-red-600 text-gray-900 font-medium'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Approved
+                <span className={`ml-2 text-xs font-normal ${activeTab === 'approved' ? 'text-gray-600' : 'text-gray-500'}`}>
+                  ({approvedRequests.length})
+                </span>
+              </button>
+              <button
+                onClick={() => setActiveTab('rejected')}
+                className={`pb-3 text-sm transition-colors border-b-2 ${
+                  activeTab === 'rejected'
+                    ? 'border-red-600 text-gray-900 font-medium'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Rejected
+                <span className={`ml-2 text-xs font-normal ${activeTab === 'rejected' ? 'text-gray-600' : 'text-gray-500'}`}>
+                  ({rejectedRequests.length})
+                </span>
+              </button>
             </div>
-          )}
+          </div>
 
           {/* Content Section */}
           <div>
-
-            {/* Table Section - Show based on admin and tab */}
+            {/* Table Section - Show filtered requests based on active tab and user role */}
             {isAdmin ? (
               renderTable(displayedRequests)
             ) : (
-              // Staff view - show their own requests
-              <>
-                <div>
-                  {renderTable(applySearchFilter(stockIns.filter(s => s.user?.id === auth.user?.id)))}
-                </div>
-              </>
+              // Staff view - show their own requests filtered by tab
+              renderTable(applySearchFilter(stockIns.filter(s => s.user?.id === auth.user?.id && s.status === activeTab)))
             )}
           </div>
         </div>

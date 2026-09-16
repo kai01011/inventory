@@ -108,17 +108,33 @@ class ApprovalService
             }
         } elseif ($product) {
             // Product exists via product_id - update price and increment quantity
-            $product->update([
+            $updateData = [
                 'price' => $item->unit_price,
-                'category_id' => $item->category_id,
-                'supplier_id' => $item->supplier_id,
-                'barcode' => $item->barcode,
-                'unit' => $item->unit,
-                'serial_no' => $item->serial_no,
-                'warranty_date' => $item->warranty_date,
                 'quantity' => $product->quantity + $item->stock_in_quantity,
                 'updated_at' => now(),
-            ]);
+            ];
+            
+            // Only update optional fields if provided
+            if ($item->category_id) {
+                $updateData['category_id'] = $item->category_id;
+            }
+            if ($item->supplier_id) {
+                $updateData['supplier_id'] = $item->supplier_id;
+            }
+            if ($item->barcode) {
+                $updateData['barcode'] = $item->barcode;
+            }
+            if ($item->unit) {
+                $updateData['unit'] = $item->unit;
+            }
+            if ($item->serial_no) {
+                $updateData['serial_no'] = $item->serial_no;
+            }
+            if ($item->warranty_date) {
+                $updateData['warranty_date'] = $item->warranty_date;
+            }
+            
+            $product->update($updateData);
         }
 
         // Log the stock addition to history if needed

@@ -826,52 +826,50 @@ export default function StockOut({ stockOuts, customers, products, auth }) {
             </div>{/* end flex container */}
           </div>
 
-          {/* Tabs for admin */}
-          {isAdmin && (
-            <div className="mb-5 border-b border-gray-200">
-              <div className="flex gap-8">
-                <button
-                  onClick={() => setActiveTab('pending')}
-                  className={`pb-3 text-sm transition-colors border-b-2 ${
-                    activeTab === 'pending'
-                      ? 'border-red-600 text-gray-900 font-medium'
-                      : 'border-transparent text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Pending Requests
-                  <span className={`ml-2 text-xs font-normal ${activeTab === 'pending' ? 'text-gray-600' : 'text-gray-500'}`}>
-                    ({pendingRequests.length})
-                  </span>
-                </button>
-                <button
-                  onClick={() => setActiveTab('approved')}
-                  className={`pb-3 text-sm transition-colors border-b-2 ${
-                    activeTab === 'approved'
-                      ? 'border-red-600 text-gray-900 font-medium'
-                      : 'border-transparent text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Approved
-                  <span className={`ml-2 text-xs font-normal ${activeTab === 'approved' ? 'text-gray-600' : 'text-gray-500'}`}>
-                    ({approvedRequests.length})
-                  </span>
-                </button>
-                <button
-                  onClick={() => setActiveTab('rejected')}
-                  className={`pb-3 text-sm transition-colors border-b-2 ${
-                    activeTab === 'rejected'
-                      ? 'border-red-600 text-gray-900 font-medium'
-                      : 'border-transparent text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Rejected
-                  <span className={`ml-2 text-xs font-normal ${activeTab === 'rejected' ? 'text-gray-600' : 'text-gray-500'}`}>
-                    ({rejectedRequests.length})
-                  </span>
-                </button>
-              </div>
+          {/* Tabs for all users */}
+          <div className="mb-5 border-b border-gray-200">
+            <div className="flex gap-8">
+              <button
+                onClick={() => setActiveTab('pending')}
+                className={`pb-3 text-sm transition-colors border-b-2 ${
+                  activeTab === 'pending'
+                    ? 'border-red-600 text-gray-900 font-medium'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Pending Requests
+                <span className={`ml-2 text-xs font-normal ${activeTab === 'pending' ? 'text-gray-600' : 'text-gray-500'}`}>
+                  ({pendingRequests.length})
+                </span>
+              </button>
+              <button
+                onClick={() => setActiveTab('approved')}
+                className={`pb-3 text-sm transition-colors border-b-2 ${
+                  activeTab === 'approved'
+                    ? 'border-red-600 text-gray-900 font-medium'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Approved
+                <span className={`ml-2 text-xs font-normal ${activeTab === 'approved' ? 'text-gray-600' : 'text-gray-500'}`}>
+                  ({approvedRequests.length})
+                </span>
+              </button>
+              <button
+                onClick={() => setActiveTab('rejected')}
+                className={`pb-3 text-sm transition-colors border-b-2 ${
+                  activeTab === 'rejected'
+                    ? 'border-red-600 text-gray-900 font-medium'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Rejected
+                <span className={`ml-2 text-xs font-normal ${activeTab === 'rejected' ? 'text-gray-600' : 'text-gray-500'}`}>
+                  ({rejectedRequests.length})
+                </span>
+              </button>
             </div>
-          )}
+          </div>
 
           {/* Table */}
           <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -888,8 +886,16 @@ export default function StockOut({ stockOuts, customers, products, auth }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {displayedRequests && displayedRequests.length > 0 ? (
-                  displayedRequests.map((item, idx) => (
+                {(() => {
+                  // Apply filtering based on user role
+                  let requestsToDisplay = displayedRequests;
+                  if (!isAdmin) {
+                    // Staff users only see their own requests
+                    requestsToDisplay = displayedRequests.filter(item => item.requested_by_id === auth?.user?.id);
+                  }
+                  
+                  return requestsToDisplay && requestsToDisplay.length > 0 ? (
+                    requestsToDisplay.map((item, idx) => (
                     <React.Fragment key={idx}>
                       <tr className="hover:bg-gray-50 transition-colors">
                         <td className="hidden sm:table-cell px-4 py-4 text-sm font-medium text-gray-900">{item.id}</td>
@@ -962,26 +968,27 @@ export default function StockOut({ stockOuts, customers, products, auth }) {
                         </td>
                       </tr>
                     </React.Fragment>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="7" className="px-4 py-12 text-center">
-                      <div className="flex flex-col items-center justify-center">
-                        <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-3">
-                          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="7" className="px-4 py-12 text-center">
+                        <div className="flex flex-col items-center justify-center">
+                          <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                          </div>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {isAdmin 
+                              ? `No ${activeTab} records found` 
+                              : `You haven't created any ${activeTab} stock out requests yet`
+                            }
+                          </p>
                         </div>
-                        <p className="text-sm font-semibold text-gray-900">
-                          {isAdmin 
-                            ? `No ${activeTab} records found` 
-                            : `You haven't created any ${activeTab} stock out requests yet`
-                          }
-                        </p>
-                      </div>
-                    </td>
-                  </tr>
-                )}
+                      </td>
+                    </tr>
+                  );
+                })()}
               </tbody>
             </table>
           </div>
@@ -1137,6 +1144,42 @@ export default function StockOut({ stockOuts, customers, products, auth }) {
                   )}
                 </div>
               </div>
+
+              {/* APPROVAL INFORMATION */}
+              {(selectedStockOutDetails.status !== 'pending' && (selectedStockOutDetails.approved_by || selectedStockOutDetails.rejection_reason)) && (
+                <div className="pt-4 border-t border-gray-200">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    {selectedStockOutDetails.approved_by && (
+                      <div>
+                        <span className="text-xs text-gray-600">
+                          {selectedStockOutDetails.status === 'approved' ? 'Approved By' : 'Processed By'}
+                        </span>
+                        <p className="text-sm font-medium text-gray-900">
+                          {selectedStockOutDetails.approved_by.name}
+                        </p>
+                      </div>
+                    )}
+                    {selectedStockOutDetails.approved_at && (
+                      <div>
+                        <span className="text-xs text-gray-600">
+                          {selectedStockOutDetails.status === 'approved' ? 'Approved At' : 'Processed At'}
+                        </span>
+                        <p className="text-sm font-medium text-gray-900">
+                          {formatDatePhilippines(selectedStockOutDetails.approved_at)}
+                        </p>
+                      </div>
+                    )}
+                    {selectedStockOutDetails.status === 'rejected' && selectedStockOutDetails.rejection_reason && (
+                      <div className="sm:col-span-2">
+                        <span className="text-xs text-red-600">Rejection Reason</span>
+                        <p className="text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg p-3 mt-1">
+                          {selectedStockOutDetails.rejection_reason}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* PRODUCTS */}
               <div className="pt-4 border-t border-gray-200">

@@ -30,6 +30,7 @@ class UserController extends Controller
                 'email' => $user->email,
                 'role_id' => $user->role_id,
                 'role' => $user->role,
+                'is_active' => $user->is_active,
                 'created_at' => $createdAt,
                 'updated_at' => $user->updated_at,
             ];
@@ -118,5 +119,28 @@ class UserController extends Controller
         $user->delete();
 
         return redirect()->back()->with('success', 'User deleted successfully.');
+    }
+
+    public function toggleStatus($id)
+    {
+        // Check if user is admin
+        if (auth()->user()->role->role_name !== 'Admin') {
+            abort(403, 'Only administrators can manage users.');
+        }
+
+        $user = User::findOrFail($id);
+        
+        // Prevent toggling own account
+        if ($user->id === auth()->id()) {
+            return redirect()->back()->with('error', 'You cannot change your own account status.');
+        }
+
+        // Toggle the is_active status
+        $user->update([
+            'is_active' => !$user->is_active,
+        ]);
+
+        $status = $user->is_active ? 'activated' : 'deactivated';
+        return redirect()->back()->with('success', "User {$status} successfully.");
     }
 }

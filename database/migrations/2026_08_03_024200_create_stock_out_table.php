@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('delivery_no')->unique();
             $table->string('address');
             $table->string('tin')->nullable();
-            $table->enum('status', ['pending', 'approved', 'shipped', 'delivered'])->default('pending');
+            $table->enum('status', ['pending', 'approved', 'rejected', 'shipped', 'delivered'])->default('pending');
             $table->string('business_style')->nullable();
             $table->timestamps();
         });
