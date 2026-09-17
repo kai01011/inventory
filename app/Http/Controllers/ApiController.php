@@ -30,14 +30,53 @@ class ApiController extends Controller
                 ->count();
         }
         
-        // If this is an Inertia request, redirect to prevent the error
-        if ($request->header('X-Inertia')) {
-            return redirect()->back();
-        }
-        
         return response()->json([
             'stockIn' => $stockInCount,
             'stockOut' => $stockOutCount
+        ]);
+    }
+
+    /**
+     * Get real-time stock in list
+     */
+    public function getStockInList(Request $request)
+    {
+        $user = auth()->user();
+        $user->load('role');
+        
+        $query = StockIn::with(['items.product', 'requestedBy', 'approvedBy']);
+        
+        // Filter based on user role
+        if ($user->role->role_name !== 'Admin') {
+            $query->where('requested_by_id', $user->id);
+        }
+        
+        $stockIns = $query->orderBy('created_at', 'desc')->get();
+        
+        return response()->json([
+            'stock_ins' => $stockIns
+        ]);
+    }
+
+    /**
+     * Get real-time stock out list
+     */
+    public function getStockOutList(Request $request)
+    {
+        $user = auth()->user();
+        $user->load('role');
+        
+        $query = StockOut::with(['items.product', 'requestedBy', 'approvedBy', 'deliveredBy', 'customer']);
+        
+        // Filter based on user role
+        if ($user->role->role_name !== 'Admin') {
+            $query->where('requested_by_id', $user->id);
+        }
+        
+        $stockOuts = $query->orderBy('created_at', 'desc')->get();
+        
+        return response()->json([
+            'stock_outs' => $stockOuts
         ]);
     }
 }

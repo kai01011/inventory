@@ -2,7 +2,8 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, usePage, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Check, XCircle, FileText, X } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRealTimeData } from '@/hooks/useRealTimeData';
 import {
   Dialog,
   DialogContent,
@@ -16,7 +17,7 @@ import ConfirmModal from '@/components/ui/confirm-modal';
 import { useToast } from '@/components/ui/toast';
 import { formatDatePhilippines, formatDateShort, formatDateTimeSingleLine } from '@/utils/dateUtils';
 
-export default function StockIn({ stockIns, products, categories, suppliers }) {
+export default function StockIn({ stockIns: initialStockIns, products, categories, suppliers }) {
   const { auth } = usePage().props;
   const { toast } = useToast();
   const isAdmin = auth.user?.role?.role_name === 'Admin';
@@ -24,6 +25,7 @@ export default function StockIn({ stockIns, products, categories, suppliers }) {
   const [detailItem, setDetailItem] = useState(null);
   const [activeTab, setActiveTab] = useState('pending');
   const [items, setItems] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [currentItem, setCurrentItem] = useState({
     product_name: '',
     category_id: '',
@@ -46,14 +48,23 @@ export default function StockIn({ stockIns, products, categories, suppliers }) {
   const [selectedStockInDetails, setSelectedStockInDetails] = useState(null);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
   const deleteForm = useForm({});
 
-  // Handle search from header
-  const handleSearch = (term) => {
-    setSearchTerm(term);
-  };
-  
+  // Real-time polling for stock in data - updates every 2 seconds
+  const { data: realtimeData, refetch } = useRealTimeData(
+    `/api/stock-in-list`,
+    2000, // 2 second interval for real-time updates
+    true
+  );
+
+  // Use real-time data if available, otherwise use initial data
+  const stockIns = useMemo(() => {
+    if (realtimeData?.stock_ins) {
+      return realtimeData.stock_ins;
+    }
+    return initialStockIns || [];
+  }, [realtimeData, initialStockIns]);
+
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     type: 'warning',
@@ -69,15 +80,6 @@ export default function StockIn({ stockIns, products, categories, suppliers }) {
   });
   const [rejectReason, setRejectReason] = useState('');
 
-  // Auto-refresh every 30 seconds to sync data
-  useEffect(() => {
-    const interval = setInterval(() => {
-      router.reload({ only: ['stockIns'], preserveScroll: true, preserveState: true });
-    }, 30000); // 30 seconds for better performance
-
-    return () => clearInterval(interval);
-  }, []);
-
   // Lock/unlock body scroll when modals open/close
   useEffect(() => {
     const hasModalOpen = selectedProductDetails || selectedStockInDetails || rejectModal.isOpen;
@@ -88,11 +90,14 @@ export default function StockIn({ stockIns, products, categories, suppliers }) {
       document.body.style.overflow = 'unset';
     }
     
-    // Cleanup on unmount
     return () => {
       document.body.style.overflow = 'unset';
     };
   }, [selectedProductDetails, selectedStockInDetails, rejectModal.isOpen]);
+
+  const handleSearch = useCallback((term) => {
+    setSearchTerm(term);
+  }, []);
 
   const addItem = () => {
     if (!currentItem.product_name) {

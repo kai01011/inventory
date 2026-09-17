@@ -45,12 +45,12 @@ class RegisterController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->string('password')),
             'role_id' => $staffRole?->id,
+            'is_active' => false, // Deactivated by default until admin activates
         ]);
 
         event(new Registered($user));
 
-        Auth::login($user);
-
-        return redirect(route('dashboard', absolute: false));
+        // Don't auto-login - user must wait for admin activation
+        return redirect('/login')->with('status', 'Account created successfully! Please wait for admin activation before logging in.');
     }
 }

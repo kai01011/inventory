@@ -2,7 +2,8 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, FileText, Download, Check, X, ChevronDown, Search } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRealTimeData } from '@/hooks/useRealTimeData';
 import { formatDatePhilippines, formatDateShort, formatDateTimeSingleLine } from '@/utils/dateUtils';
 
 import {
@@ -16,12 +17,28 @@ import {
 import ConfirmModal from '@/components/ui/confirm-modal';
 import { useToast } from '@/components/ui/toast';
 
-export default function StockOut({ stockOuts, customers, products, auth }) {
+export default function StockOut({ stockOuts: initialStockOuts, customers, products, auth }) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   
-  // Smart default tab - if staff user has no pending requests, show approved
+  // Real-time polling for stock out data - updates every 2 seconds
+  const { data: realtimeData, refetch } = useRealTimeData(
+    `/api/stock-out-list`,
+    2000, // 2 second interval for real-time updates
+    true
+  );
+
+  // Use real-time data if available, otherwise use initial data
+  const stockOuts = useMemo(() => {
+    if (realtimeData?.stock_outs) {
+      return realtimeData.stock_outs;
+    }
+    return initialStockOuts || [];
+  }, [realtimeData, initialStockOuts]);
+
+  // Smart default tab
   const isAdmin = auth?.user?.role?.role_name === 'Admin';
   const pendingCount = stockOuts?.filter(s => s.status === 'pending').length || 0;
   const approvedCount = stockOuts?.filter(s => s.status === 'approved').length || 0;
@@ -33,13 +50,7 @@ export default function StockOut({ stockOuts, customers, products, auth }) {
   const [rejectingId, setRejectingId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [selectedStockOutDetails, setSelectedStockOutDetails] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const [items, setItems] = useState([]);
-
-  // Handle search from header
-  const handleSearch = (term) => {
-    setSearchTerm(term);
-  };
   const [productSearchOpen, setProductSearchOpen] = useState(false);
   const [productSearchTerm, setProductSearchTerm] = useState('');
   const [customerSearchOpen, setCustomerSearchOpen] = useState(false);
@@ -60,7 +71,6 @@ export default function StockOut({ stockOuts, customers, products, auth }) {
     items: [],
   });
 
-  // Confirmation modal states
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
     type: 'warning',
@@ -68,15 +78,6 @@ export default function StockOut({ stockOuts, customers, products, auth }) {
     message: '',
     onConfirm: () => {},
   });
-
-  // Auto-refresh every 30 seconds to sync data
-  useEffect(() => {
-    const interval = setInterval(() => {
-      router.reload({ only: ['stockOuts'], preserveScroll: true, preserveState: true });
-    }, 30000); // 30 seconds for better performance
-
-    return () => clearInterval(interval);
-  }, []);
 
   // Lock/unlock body scroll when modals open/close
   useEffect(() => {
@@ -88,11 +89,14 @@ export default function StockOut({ stockOuts, customers, products, auth }) {
       document.body.style.overflow = 'unset';
     }
     
-    // Cleanup on unmount
     return () => {
       document.body.style.overflow = 'unset';
     };
   }, [detailItem, selectedStockOutDetails, rejectDialogOpen, confirmModal.isOpen]);
+
+  const handleSearch = useCallback((term) => {
+    setSearchTerm(term);
+  }, []);
 
   // Close product dropdown when clicking outside
   useEffect(() => {

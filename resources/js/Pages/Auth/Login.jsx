@@ -20,8 +20,8 @@ export default function Login() {
     return (
         <>
             <Head title="Login" />
-            <div className="fixed inset-0 bg-gray-50 flex overflow-hidden">
-                {/* Left Side - Branding */}
+            <div className="min-h-screen bg-gray-50 flex flex-col lg:flex-row">
+                {/* Left Side - Branding (Desktop Only) */}
                 <div className="hidden lg:flex lg:w-1/2 bg-white flex-col items-center justify-center px-12">
                     <div className="text-center">
                         <img src="/images/cravelogo.png" alt="CRAVE Logo" className="h-24 mb-4 mx-auto" />
@@ -31,18 +31,18 @@ export default function Login() {
                 </div>
 
                 {/* Right Side - Form */}
-                <div className="w-full lg:w-1/2 flex items-center justify-center px-6">
-                    <div className="w-full max-w-md border-2 border-red-600 rounded-lg p-8 bg-white shadow-lg">
+                <div className="w-full lg:w-1/2 flex flex-col items-center justify-center px-4 py-8 lg:py-0 overflow-y-auto lg:overflow-y-visible">
+                    <div className="w-full max-w-[440px] border border-gray-200 rounded-lg p-7 sm:p-8 bg-white shadow-sm">
                         {/* Form Header */}
                         <div className="text-center mb-8">
-                            <img src="/images/cravelogo.png" alt="CRAVE Logo" className="h-12 mb-6 mx-auto" />
-                            <h2 className="text-2xl font-bold text-gray-900 mb-2">Sign in to your account</h2>
-                            <p className="text-gray-600">Enter your credentials to continue</p>
+                            {/* Logo - Mobile only */}
+                            <img src="/images/cravelogo.png" alt="CRAVE Logo" className="h-10 mb-4 mx-auto lg:hidden" />
+                            <h2 className="text-2xl font-bold text-gray-900">Sign in to your account</h2>
                         </div>
 
                         {/* Error Messages */}
                         {(errors.email || errors.password) && (
-                            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg space-y-1">
+                            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg space-y-1">
                                 {errors.email && <p className="text-sm text-red-600">{errors.email}</p>}
                                 {errors.password && <p className="text-sm text-red-600">{errors.password}</p>}
                             </div>
@@ -51,34 +51,38 @@ export default function Login() {
                         <form onSubmit={submit} className="space-y-4">
                             {/* Email */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                                 <Input
+                                    id="email"
                                     type="email"
                                     name="email"
                                     value={data.email}
                                     onChange={(e) => setData('email', e.target.value)}
                                     placeholder="test@example.com"
-                                    className="bg-gray-100 border-red-400 focus:border-red-600 focus:ring-red-400 focus:ring-2"
+                                    autoComplete="email"
+                                    className={`h-11 ${errors.email ? 'border-red-500' : 'border-gray-300'}`}
                                 />
                             </div>
 
                             {/* Password */}
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                            <div className="pt-2">
+                                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">Password</label>
                                 <div className="relative">
                                     <Input
+                                        id="password"
                                         type={showPassword ? 'text' : 'password'}
                                         name="password"
                                         value={data.password}
                                         onChange={(e) => setData('password', e.target.value)}
                                         placeholder="••••••••"
-                                        className="bg-gray-100 pr-10 border-red-400 focus:border-red-600 focus:ring-red-400 focus:ring-2"
+                                        autoComplete="current-password"
+                                        className={`h-11 pr-11 ${errors.password ? 'border-red-500' : 'border-gray-300'}`}
                                     />
                                     <button
                                         type="button"
-                                        name="password_toggle"
+                                        aria-label={showPassword ? 'Hide password' : 'Show password'}
                                         onClick={() => setShowPassword(!showPassword)}
-                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 p-1"
                                     >
                                         {showPassword ? <Eye size={18} /> : <EyeOff size={18} />}
                                     </button>
@@ -86,12 +90,12 @@ export default function Login() {
                             </div>
 
                             {/* Remember & Forgot Password */}
-                            <div className="flex items-center justify-between">
-                                <label className="flex items-center gap-2 cursor-pointer">
-                                    <input type="checkbox" name="remember" className="w-4 h-4 rounded" />
+                            <div className="flex items-center justify-between pt-2">
+                                <label htmlFor="remember" className="flex items-center gap-2 cursor-pointer">
+                                    <input id="remember" type="checkbox" name="remember" className="w-4 h-4 rounded border border-gray-300" />
                                     <span className="text-sm text-gray-700">Remember me</span>
                                 </label>
-                                <a href="#" className="text-sm text-red-600 hover:text-red-700 font-semibold">
+                                <a href={route('password.request')} className="text-sm text-red-600 hover:text-red-700 font-semibold">
                                     Forgot password?
                                 </a>
                             </div>
@@ -100,7 +104,7 @@ export default function Login() {
                             <Button
                                 type="submit"
                                 disabled={processing}
-                                className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 mt-6"
+                                className="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-semibold h-11 mt-6"
                             >
                                 {processing ? 'Signing in...' : 'Login'}
                             </Button>

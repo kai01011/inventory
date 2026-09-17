@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
-import { ChevronDown, LogOut, Menu, User, Search, Users } from 'lucide-react';
-import { usePage, Link } from '@inertiajs/react';
+import { useState, useCallback, useRef, useMemo } from 'react';
+import { ChevronDown, LogOut, Menu, Search, Users } from 'lucide-react';
+import { usePage, Link, router } from '@inertiajs/react';
 import NotificationBell from './NotificationBell';
 import SearchInput from './SearchInput';
-import { getCurrentTime } from '@/utils/dateUtils';
 
 export default function DashboardHeader({ user, onSearch, searchTerm: externalSearchTerm, setSearchTerm: externalSetSearchTerm, onToggleSidebar }) {
     const { component } = usePage();
@@ -11,44 +10,26 @@ export default function DashboardHeader({ user, onSearch, searchTerm: externalSe
     const [showMobileSearch, setShowMobileSearch] = useState(false);
     const userMenuRef = useRef(null);
 
-    // Hide global search on Users page (uses page-specific search instead)
     const hideGlobalSearch = component === 'Users';
 
-    // Get current date
-    const currentTime = getCurrentTime();
-
-    // Determine page title based on component name
-    const getPageTitle = () => {
+    const pageTitle = useMemo(() => {
         if (component === 'Dashboard') return 'Dashboard';
-        // Return component name with spaces for other pages
         return component?.replace(/([A-Z])/g, ' $1').trim() || 'Page';
-    };
+    }, [component]);
 
-    // Close user menu on outside click
-    useEffect(() => {
-        const handleClickOutside = (e) => {
-            if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
-                setShowUserMenu(false);
-            }
-        };
+    const userInitials = useMemo(() => {
+        return user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U';
+    }, [user?.name]);
 
-        if (showUserMenu) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [showUserMenu]);
-
-    const handleLogout = () => {
+    const handleLogout = useCallback(() => {
         router.post('/logout');
-    };
+    }, []);
 
     return (
         <>
-            <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 sm:px-6 h-16 flex items-center shadow-sm">
+            <div className="bg-white border-b border-gray-200 px-4 sm:px-6 h-16 flex items-center shadow-sm">
                 <div className="flex items-center justify-between w-full gap-4">
-                    {/* Left side - Toggle and Title */}
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                        {/* Sidebar Toggle Button */}
                         <button
                             onClick={onToggleSidebar}
                             className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
@@ -57,18 +38,12 @@ export default function DashboardHeader({ user, onSearch, searchTerm: externalSe
                         >
                             <Menu size={20} />
                         </button>
-
-                        {/* Page Title */}
-                        <div className="flex items-center gap-2 min-w-0">
-                            <h1 className="text-lg sm:text-xl font-semibold text-gray-900 whitespace-nowrap">
-                                {getPageTitle()}
-                            </h1>
-                        </div>
+                        <h1 className="text-lg sm:text-xl font-semibold text-gray-900 whitespace-nowrap">
+                            {pageTitle}
+                        </h1>
                     </div>
 
-                    {/* Right side - Search, Notifications, User Menu */}
                     <div className="flex items-center gap-3 ml-auto flex-shrink-0">
-                        {/* Mobile Search Button - Hidden on Users page */}
                         {!hideGlobalSearch && (
                             <button
                                 onClick={() => setShowMobileSearch(true)}
@@ -79,7 +54,6 @@ export default function DashboardHeader({ user, onSearch, searchTerm: externalSe
                             </button>
                         )}
 
-                        {/* Global Search - Hidden on Users page */}
                         {!hideGlobalSearch && (
                             <div className="relative hidden lg:block">
                                 <SearchInput
@@ -95,7 +69,6 @@ export default function DashboardHeader({ user, onSearch, searchTerm: externalSe
                             </div>
                         )}
 
-                        {/* Compact Search for Tablet - Hidden on Users page */}
                         {!hideGlobalSearch && (
                             <div className="relative hidden md:block lg:hidden">
                                 <SearchInput
@@ -110,23 +83,17 @@ export default function DashboardHeader({ user, onSearch, searchTerm: externalSe
                             </div>
                         )}
 
-                        {/* Notification Bell */}
-                        <div className="relative">
-                            <NotificationBell user={user} />
-                        </div>
+                        <NotificationBell user={user} />
 
-                        {/* User Menu */}
                         <div className="relative" ref={userMenuRef}>
                             <button
                                 onClick={() => setShowUserMenu(!showUserMenu)}
-                                className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors duration-150"
+                                className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors"
                                 aria-expanded={showUserMenu}
                                 aria-haspopup="true"
-                                aria-label="Account menu"
                             >
-                                {/* User Avatar with Initials */}
                                 <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-semibold text-gray-700">
-                                    {user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                                    {userInitials}
                                 </div>
                                 <span className="text-sm font-medium text-gray-700 hidden sm:block">
                                     {user?.name?.split(' ')[0] || 'User'}
@@ -137,36 +104,28 @@ export default function DashboardHeader({ user, onSearch, searchTerm: externalSe
                                 />
                             </button>
 
-                            {/* User Dropdown Menu */}
                             {showUserMenu && (
                                 <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                                     <div className="py-2">
-                                        {/* User Info Header */}
                                         <div className="px-4 py-3 border-b border-gray-100">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-semibold text-gray-700">
-                                                    {user?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+                                                    {userInitials}
                                                 </div>
                                                 <div className="min-w-0 flex-1">
-                                                    <div className="font-medium text-gray-900 truncate">
-                                                        {user?.name}
-                                                    </div>
-                                                    <div className="text-sm text-gray-500 truncate">
-                                                        {user?.email}
-                                                    </div>
-                                                    <div className="text-xs text-gray-400 capitalize">
-                                                        {user?.role?.role_name || 'Staff'}
-                                                    </div>
+                                                    <div className="font-medium text-gray-900 truncate">{user?.name}</div>
+                                                    <div className="text-sm text-gray-500 truncate">{user?.email}</div>
+                                                    <div className="text-xs text-gray-400 capitalize">{user?.role?.role_name || 'Staff'}</div>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        {/* User Management - Admin Only */}
                                         {user?.role?.role_name === 'Admin' && (
-                                            <div className="border-b border-gray-100 pb-2">
+                                            <div className="border-b border-gray-100">
                                                 <Link
                                                     href="/users"
-                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors block"
+                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors"
+                                                    onClick={() => setShowUserMenu(false)}
                                                 >
                                                     <Users size={16} className="text-gray-500" />
                                                     User Management
@@ -174,13 +133,12 @@ export default function DashboardHeader({ user, onSearch, searchTerm: externalSe
                                             </div>
                                         )}
 
-                                        {/* Logout */}
                                         <div className="pt-2">
                                             <button
                                                 onClick={handleLogout}
                                                 className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 font-medium transition-colors"
                                             >
-                                                <LogOut size={16} className="text-red-500" />
+                                                <LogOut size={16} />
                                                 Logout
                                             </button>
                                         </div>
@@ -192,7 +150,6 @@ export default function DashboardHeader({ user, onSearch, searchTerm: externalSe
                 </div>
             </div>
 
-            {/* Mobile Search Overlay - Hidden on Users page */}
             {!hideGlobalSearch && showMobileSearch && (
                 <div className="fixed inset-0 bg-white z-50 md:hidden">
                     <div className="flex items-center gap-3 p-4 border-b border-gray-200">
@@ -208,17 +165,11 @@ export default function DashboardHeader({ user, onSearch, searchTerm: externalSe
                             searchTerm={externalSearchTerm}
                             setSearchTerm={externalSetSearchTerm}
                             placeholder="Search inventory…"
-                            className="flex-1"
                             width=""
                             size="lg"
                             autoFocus={true}
                             onEscape={() => setShowMobileSearch(false)}
                         />
-                    </div>
-                    <div className="p-4">
-                        <p className="text-sm text-gray-500 text-center">
-                            Start typing to search…
-                        </p>
                     </div>
                 </div>
             )}

@@ -19,11 +19,6 @@ class CustomerController extends Controller
 
     public function store(StoreCustomerRequest $request)
     {
-        // Only admins can create customers
-        if (auth()->user()->role->role_name !== 'Admin') {
-            abort(403, 'Only administrators can create customers.');
-        }
-        
         Customer::create($request->validated());
         
         return redirect('/customers');
@@ -31,11 +26,6 @@ class CustomerController extends Controller
 
     public function update(StoreCustomerRequest $request, $id)
     {
-        // Only admins can update customers
-        if (auth()->user()->role->role_name !== 'Admin') {
-            abort(403, 'Only administrators can update customers.');
-        }
-        
         $customer = Customer::findOrFail($id);
         $customer->update($request->validated());
 
@@ -44,11 +34,6 @@ class CustomerController extends Controller
 
     public function destroy($id)
     {
-        // Only admins can delete customers
-        if (auth()->user()->role->role_name !== 'Admin') {
-            abort(403, 'Only administrators can delete customers.');
-        }
-        
         $customer = Customer::findOrFail($id);
         $customer->delete();
 

@@ -25,11 +25,6 @@ class ProductController extends Controller
 
     public function store(StoreProductRequest $request)
     {
-        // Only admins can create products
-        if (auth()->user()->role->role_name !== 'Admin') {
-            abort(403, 'Only administrators can create products.');
-        }
-        
         Product::create($request->validated());
         
         return redirect('/products');
@@ -37,11 +32,6 @@ class ProductController extends Controller
 
     public function update(StoreProductRequest $request, $id)
     {
-        // Only admins can update products
-        if (auth()->user()->role->role_name !== 'Admin') {
-            abort(403, 'Only administrators can update products.');
-        }
-        
         $product = Product::findOrFail($id);
         $product->update($request->validated());
 
@@ -50,11 +40,6 @@ class ProductController extends Controller
 
     public function destroy($id)
     {
-        // Only admins can delete products
-        if (auth()->user()->role->role_name !== 'Admin') {
-            abort(403, 'Only administrators can delete products.');
-        }
-        
         $product = Product::findOrFail($id);
         $product->delete();
         

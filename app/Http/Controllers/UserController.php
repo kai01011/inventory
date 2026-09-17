@@ -110,11 +110,6 @@ class UserController extends Controller
         }
 
         $user = User::findOrFail($id);
-        
-        // Prevent deletion of current user
-        if ($user->id === auth()->id()) {
-            return redirect()->back()->with('error', 'You cannot delete your own account.');
-        }
 
         $user->delete();
 
@@ -129,11 +124,6 @@ class UserController extends Controller
         }
 
         $user = User::findOrFail($id);
-        
-        // Prevent toggling own account
-        if ($user->id === auth()->id()) {
-            return redirect()->back()->with('error', 'You cannot change your own account status.');
-        }
 
         // Toggle the is_active status
         $user->update([

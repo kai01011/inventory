@@ -19,11 +19,6 @@ class CategoryController extends Controller
 
     public function store(StoreCategoryRequest $request)
     {
-        // Only admins can create categories
-        if (auth()->user()->role->role_name !== 'Admin') {
-            abort(403, 'Only administrators can create categories.');
-        }
-        
         Category::create($request->validated());
         
         return redirect('/categories');
@@ -31,11 +26,6 @@ class CategoryController extends Controller
 
     public function update(StoreCategoryRequest $request, $id)
     {
-        // Only admins can update categories
-        if (auth()->user()->role->role_name !== 'Admin') {
-            abort(403, 'Only administrators can update categories.');
-        }
-        
         $category = Category::findOrFail($id);
         $category->update($request->validated());
 
@@ -44,11 +34,6 @@ class CategoryController extends Controller
 
     public function destroy($id)
     {
-        // Only admins can delete categories
-        if (auth()->user()->role->role_name !== 'Admin') {
-            abort(403, 'Only administrators can delete categories.');
-        }
-        
         $category = Category::findOrFail($id);
         $category->delete();
         

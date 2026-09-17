@@ -1,7 +1,5 @@
 <?php
 
-use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\TableViewController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\CategoryController;
@@ -18,6 +16,8 @@ use App\Http\Controllers\DeliveryReceiptController;
 use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ApiController;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\RegisterController;
 use Illuminate\Support\Facades\Route;
 
 // Redirect root to login
@@ -29,6 +29,18 @@ Route::post('/login', [LoginController::class, 'store']);
 
 Route::get('/register', [RegisterController::class, 'create'])->name('register');
 Route::post('/register', [RegisterController::class, 'store']);
+
+// Password reset routes
+Route::middleware('guest')->group(function () {
+    Route::get('/forgot-password', [\App\Http\Controllers\Auth\PasswordResetLinkController::class, 'create'])
+        ->name('password.request');
+    Route::post('/forgot-password', [\App\Http\Controllers\Auth\PasswordResetLinkController::class, 'store'])
+        ->name('password.email');
+    Route::get('/reset-password/{token}', [\App\Http\Controllers\Auth\NewPasswordController::class, 'create'])
+        ->name('password.reset');
+    Route::post('/reset-password', [\App\Http\Controllers\Auth\NewPasswordController::class, 'store'])
+        ->name('password.store');
+});
 
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
@@ -95,8 +107,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/delivery-receipt/{id}/download', [DeliveryReceiptController::class, 'generateReceipt'])->name('delivery-receipt.download');
     Route::get('/delivery-receipt/{id}/view', [DeliveryReceiptController::class, 'view'])->name('delivery-receipt.view');
     
-    // API routes for pending counts
+    // API routes for pending counts and real-time data
     Route::get('/api/pending-counts', [ApiController::class, 'getPendingCounts'])->name('api.pending-counts');
+    Route::get('/api/stock-in-list', [ApiController::class, 'getStockInList'])->name('api.stock-in-list');
+    Route::get('/api/stock-out-list', [ApiController::class, 'getStockOutList'])->name('api.stock-out-list');
     
     // Report routes
     Route::get('/reports/monthly', [ReportController::class, 'monthlyReport'])->name('reports.monthly');

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Bell, X, PackageSearch, PackageMinus, CheckCheck, Inbox } from 'lucide-react';
 import { Link } from '@inertiajs/react';
 import { formatDateShort } from '@/utils/dateUtils';
@@ -6,7 +6,7 @@ import { formatDateShort } from '@/utils/dateUtils';
 function timeAgo(dateStr) {
   const now = new Date();
   const date = new Date(dateStr);
-  const diff = Math.floor((now - date) / 1000); // seconds
+  const diff = Math.floor((now - date) / 1000);
 
   if (diff < 60) return 'Just now';
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
@@ -30,28 +30,14 @@ function NotificationIcon({ type }) {
       </div>
     );
   }
-  if (type === 'stock_in_approved') {
+  if (type === 'stock_in_approved' || type === 'stock_out_approved') {
     return (
       <div className="flex-shrink-0 w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
         <CheckCheck size={16} className="text-green-600" />
       </div>
     );
   }
-  if (type === 'stock_in_rejected') {
-    return (
-      <div className="flex-shrink-0 w-9 h-9 rounded-full bg-red-100 flex items-center justify-center">
-        <X size={16} className="text-red-600" />
-      </div>
-    );
-  }
-  if (type === 'stock_out_approved') {
-    return (
-      <div className="flex-shrink-0 w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
-        <CheckCheck size={16} className="text-green-600" />
-      </div>
-    );
-  }
-  if (type === 'stock_out_rejected') {
+  if (type === 'stock_in_rejected' || type === 'stock_out_rejected') {
     return (
       <div className="flex-shrink-0 w-9 h-9 rounded-full bg-red-100 flex items-center justify-center">
         <X size={16} className="text-red-600" />
@@ -71,12 +57,50 @@ export default function NotificationBell({ user }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const panelRef = useRef(null);
+  const pollInterval = useRef(null);
 
+  const csrf = useCallback(() =>
+    document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'), []);
+
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const res = await fetch('/notifications/unread-count');
+      const data = await res.json();
+      setUnreadCount(data.unread_count || 0);
+    } catch (error) {
+      console.error('Failed to fetch unread count:', error);
+    }
+  }, []);
+
+  const fetchNotifications = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/notifications/recent?limit=10');
+      const data = await res.json();
+      setNotifications(data.notifications || []);
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    } finally { 
+      setLoading(false); 
+    }
+  }, []);
+
+  // Initialize polling on mount
   useEffect(() => {
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 5000);
-    return () => clearInterval(interval);
-  }, []);
+    
+    // Poll every 2 seconds for faster updates
+    pollInterval.current = setInterval(() => {
+      fetchUnreadCount();
+      if (open) {
+        fetchNotifications();
+      }
+    }, 2000);
+
+    return () => {
+      if (pollInterval.current) clearInterval(pollInterval.current);
+    };
+  }, [open, fetchUnreadCount, fetchNotifications]);
 
   // Close panel on outside click
   useEffect(() => {
@@ -85,91 +109,90 @@ export default function NotificationBell({ user }) {
         setOpen(false);
       }
     };
-    if (open) document.addEventListener('mousedown', handleClickOutside);
+    if (open) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [open]);
 
-  const fetchUnreadCount = async () => {
-    try {
-      const res = await fetch('/notifications/unread-count');
-      const data = await res.json();
-      setUnreadCount(data.unread_count);
-    } catch {}
-  };
-
-  const fetchNotifications = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/notifications/recent?limit=10');
-      const data = await res.json();
-      setNotifications(data.notifications);
-    } catch {}
-    finally { setLoading(false); }
-  };
-
-  const handleOpen = () => {
-    if (!open) fetchNotifications();
+  const handleOpen = useCallback(() => {
+    if (!open) {
+      fetchNotifications();
+    }
     setOpen(v => !v);
-  };
+  }, [open, fetchNotifications]);
 
-  const csrf = () =>
-    document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-
-  const markAsRead = async (id) => {
+  const markAsRead = useCallback(async (id) => {
     try {
       await fetch(`/notifications/${id}/read`, {
         method: 'POST',
-        headers: { 'X-CSRF-TOKEN': csrf(), 'Content-Type': 'application/json' },
+        headers: { 
+          'X-CSRF-TOKEN': csrf(), 
+          'Content-Type': 'application/json' 
+        },
       });
-      fetchUnreadCount();
-      fetchNotifications();
-    } catch {}
-  };
+      // Update UI immediately without waiting for fetch
+      setNotifications(prev => 
+        prev.map(n => n.id === id ? { ...n, read: true } : n)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Failed to mark as read:', error);
+    }
+  }, [csrf]);
 
-  const markAllAsRead = async () => {
+  const markAllAsRead = useCallback(async () => {
     try {
       await fetch('/notifications/mark-all-read', {
         method: 'POST',
-        headers: { 'X-CSRF-TOKEN': csrf(), 'Content-Type': 'application/json' },
+        headers: { 
+          'X-CSRF-TOKEN': csrf(), 
+          'Content-Type': 'application/json' 
+        },
       });
-      fetchUnreadCount();
-      fetchNotifications();
-    } catch {}
-  };
+      // Update UI immediately
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Failed to mark all as read:', error);
+    }
+  }, [csrf]);
 
-  const handleNotificationClick = async (notification) => {
-    if (!notification.read) await markAsRead(notification.id);
+  const handleNotificationClick = useCallback((notification) => {
+    if (!notification.read) {
+      markAsRead(notification.id);
+    }
     setOpen(false);
-    if (notification.type === 'stock_in_request' || notification.type === 'stock_in_approved' || notification.type === 'stock_in_rejected') {
+    
+    const stockTypes = ['stock_in_request', 'stock_in_approved', 'stock_in_rejected'];
+    if (stockTypes.includes(notification.type)) {
       window.location.href = `/stock-in?highlight=${notification.related_id}`;
-    } else if (notification.type === 'stock_out_request' || notification.type === 'stock_out_approved' || notification.type === 'stock_out_rejected') {
+    } else {
       window.location.href = `/stock-out?highlight=${notification.related_id}`;
     }
-  };
+  }, [markAsRead]);
 
   if (!user) return null;
 
   return (
     <div className="relative" ref={panelRef}>
-      {/* Bell button */}
       <button
         onClick={handleOpen}
         className="relative p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
         title="Notifications"
+        aria-label="Notifications"
       >
         <Bell size={20} />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] rounded-full min-w-[18px] h-[18px] flex items-center justify-center font-bold px-0.5 leading-none">
+          <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] rounded-full min-w-[18px] h-[18px] flex items-center justify-center font-bold px-0.5 leading-none animate-pulse">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
 
-      {/* Panel */}
       {open && (
         <div className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-xl border border-gray-100 z-50 overflow-hidden">
 
-          {/* Header */}
           <div className="px-4 py-3 flex items-center justify-between border-b border-gray-100">
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>
@@ -188,13 +211,15 @@ export default function NotificationBell({ user }) {
                   <CheckCheck size={12} /> All read
                 </button>
               )}
-              <button onClick={() => setOpen(false)} className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors">
+              <button 
+                onClick={() => setOpen(false)} 
+                className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
+              >
                 <X size={14} />
               </button>
             </div>
           </div>
 
-          {/* List */}
           <div className="max-h-96 overflow-y-auto">
             {loading ? (
               <div className="flex items-center justify-center py-6 gap-2">
@@ -215,10 +240,9 @@ export default function NotificationBell({ user }) {
                     `}
                   >
                     {!n.read && (
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-red-500" />
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                     )}
 
-                    {/* Small icon */}
                     <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center mt-0.5 ${
                       n.type === 'stock_in_request' ? 'bg-blue-100' : 
                       n.type === 'stock_out_request' ? 'bg-orange-100' : 
@@ -273,7 +297,6 @@ export default function NotificationBell({ user }) {
             )}
           </div>
 
-          {/* Footer */}
           {notifications.length > 0 && (
             <div className="px-4 py-2.5 border-t border-gray-100 bg-gray-50/50">
               <p className="text-[11px] text-gray-400 text-center">
@@ -286,3 +309,4 @@ export default function NotificationBell({ user }) {
     </div>
   );
 }
+

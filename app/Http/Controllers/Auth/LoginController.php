@@ -38,7 +38,7 @@ class LoginController extends Controller
             if (!$user->is_active) {
                 Auth::logout();
                 return back()->withErrors([
-                    'email' => 'Your account has been deactivated. Please contact an administrator.',
+                    'email' => 'Your account has not been activated yet. Please contact an administrator.',
                 ])->onlyInput('email');
             }
 

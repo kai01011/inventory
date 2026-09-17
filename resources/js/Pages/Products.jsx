@@ -222,36 +222,35 @@ export default function Products({ products, categories, suppliers }) {
 
         {/* Table — no inner scroll, flows with the page */}
         <div className="border border-gray-200 rounded-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+          <table className="w-full text-xs border-collapse">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-3 sm:px-4 py-3 text-left font-semibold text-gray-900 min-w-[120px]">Product</th>
-                  <th className="hidden sm:table-cell px-3 sm:px-4 py-3 text-left font-semibold text-gray-900 min-w-[100px]">Category</th>
-                  <th className="hidden md:table-cell px-3 sm:px-4 py-3 text-left font-semibold text-gray-900 min-w-[110px]">Supplier</th>
-                  <th className="px-3 sm:px-4 py-3 text-left font-semibold text-gray-900 min-w-[80px]">Price</th>
-                  <th className="hidden md:table-cell px-3 sm:px-4 py-3 text-left font-semibold text-gray-900 min-w-[110px]">Barcode</th>
-                  <th className="hidden lg:table-cell px-3 sm:px-4 py-3 text-left font-semibold text-gray-900 min-w-[90px]">Unit</th>
-                  <th className="hidden lg:table-cell px-3 sm:px-4 py-3 text-left font-semibold text-gray-900 min-w-[110px]">Serial No</th>
-                  <th className="px-3 sm:px-4 py-3 text-center font-semibold text-gray-900 min-w-[100px]">Actions</th>
+                  <th className="px-2 py-3 text-left font-semibold text-gray-900 text-[12px] w-[15%]">Product</th>
+                  <th className="hidden sm:table-cell px-2 py-3 text-left font-semibold text-gray-900 text-[12px] w-[13%]">Category</th>
+                  <th className="hidden md:table-cell px-2 py-3 text-left font-semibold text-gray-900 text-[12px] w-[13%]">Supplier</th>
+                  <th className="px-2 py-3 text-left font-semibold text-gray-900 text-[12px] w-[11%]">Price</th>
+                  <th className="hidden md:table-cell px-2 py-3 text-left font-semibold text-gray-900 text-[12px] w-[14%]">Barcode</th>
+                  <th className="hidden lg:table-cell px-2 py-3 text-left font-semibold text-gray-900 text-[12px] w-[8%]">Unit</th>
+                  <th className="hidden lg:table-cell px-2 py-3 text-left font-semibold text-gray-900 text-[12px] w-[13%]">Serial No</th>
+                  <th className="px-2 py-3 text-center font-semibold text-gray-900 text-[12px] w-[13%]">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {filteredProducts && filteredProducts.length > 0 ? (
                   filteredProducts.map((product, idx) => (
                     <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-3 sm:px-4 py-3 font-medium text-gray-900 truncate" title={product.product_name}>{product.product_name}</td>
-                      <td className="hidden sm:table-cell px-3 sm:px-4 py-3 text-gray-700 truncate" title={product.category?.category_name}>{product.category?.category_name || '-'}</td>
-                      <td className="hidden md:table-cell px-3 sm:px-4 py-3 text-gray-700 truncate" title={product.supplier?.supplier_name}>{product.supplier?.supplier_name || '-'}</td>
-                      <td className="px-3 sm:px-4 py-3 text-gray-700 truncate font-semibold">₱{parseFloat(product.price || 0).toFixed(2)}</td>
-                      <td className="hidden md:table-cell px-3 sm:px-4 py-3 text-gray-700 font-mono truncate text-xs" title={product.barcode}>{product.barcode || '-'}</td>
-                      <td className="hidden lg:table-cell px-3 sm:px-4 py-3 text-gray-700 truncate">{product.unit || '-'}</td>
-                      <td className="hidden lg:table-cell px-3 sm:px-4 py-3 text-gray-700 font-mono truncate text-xs" title={product.serial_no}>{product.serial_no || '-'}</td>
-                      <td className="px-3 sm:px-4 py-3">
-                        <div className="flex items-center justify-center gap-2">
+                      <td className="px-2 py-3 font-medium text-gray-900 truncate text-[12px]" title={product.product_name}>{product.product_name}</td>
+                      <td className="hidden sm:table-cell px-2 py-3 text-gray-700 truncate text-[12px]" title={product.category?.category_name}>{product.category?.category_name || '-'}</td>
+                      <td className="hidden md:table-cell px-2 py-3 text-gray-700 truncate text-[12px]" title={product.supplier?.supplier_name}>{product.supplier?.supplier_name || '-'}</td>
+                      <td className="px-2 py-3 text-gray-700 truncate font-semibold text-[12px]">₱{parseFloat(product.price || 0).toFixed(2)}</td>
+                      <td className="hidden md:table-cell px-2 py-3 text-gray-700 font-mono truncate text-[11px]" title={product.barcode}>{product.barcode || '-'}</td>
+                      <td className="hidden lg:table-cell px-2 py-3 text-gray-700 truncate text-[12px]">{product.unit || '-'}</td>
+                      <td className="hidden lg:table-cell px-2 py-3 text-gray-700 font-mono truncate text-[11px]" title={product.serial_no}>{product.serial_no || '-'}</td>
+                      <td className="px-2 py-3">
+                        <div className="flex items-center justify-center gap-0.5">
                           <button
                             onClick={() => setSelectedProductDetails(product)}
-                            className="text-blue-600 hover:text-blue-800 text-xs font-semibold px-2 py-2 bg-blue-50 rounded hover:bg-blue-100 transition whitespace-nowrap"
+                            className="text-blue-600 hover:text-blue-800 text-[10px] font-semibold px-1.5 py-1.5 bg-blue-50 rounded hover:bg-blue-100 transition whitespace-nowrap"
                             title="View details"
                           >
                             Details
@@ -259,16 +258,16 @@ export default function Products({ products, categories, suppliers }) {
                           <button
                             onClick={() => handleEditOpen(product)}
                             title="Edit product"
-                            className="group inline-flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white shadow-sm hover:shadow-blue-200 hover:shadow-md transition-all duration-200"
+                            className="group inline-flex items-center justify-center w-7 h-7 rounded-lg bg-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white shadow-sm hover:shadow-blue-200 hover:shadow-md transition-all duration-200 flex-shrink-0"
                           >
-                            <Pencil size={16} className="group-hover:scale-110 transition-transform duration-200" />
+                            <Pencil size={14} className="group-hover:scale-110 transition-transform duration-200" />
                           </button>
                           <button
                             onClick={() => handleDelete(product.id)}
                             title="Delete product"
-                            className="group inline-flex items-center justify-center w-8 h-8 rounded-lg bg-red-100 text-red-600 hover:bg-red-600 hover:text-white shadow-sm hover:shadow-red-200 hover:shadow-md transition-all duration-200"
+                            className="group inline-flex items-center justify-center w-7 h-7 rounded-lg bg-red-100 text-red-600 hover:bg-red-600 hover:text-white shadow-sm hover:shadow-red-200 hover:shadow-md transition-all duration-200 flex-shrink-0"
                           >
-                            <Trash2 size={16} className="group-hover:scale-110 transition-transform duration-200" />
+                            <Trash2 size={14} className="group-hover:scale-110 transition-transform duration-200" />
                           </button>
                         </div>
                       </td>
@@ -276,14 +275,13 @@ export default function Products({ products, categories, suppliers }) {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="8" className="px-3 sm:px-4 py-8 text-center text-sm text-gray-600">
+                    <td colSpan="8" className="px-2 py-8 text-center text-sm text-gray-600">
                       {searchTerm ? 'No products match your search' : 'No products found'}
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
-          </div>
         </div>
       </div>
 
